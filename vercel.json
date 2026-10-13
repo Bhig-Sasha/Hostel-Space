@@ -5,22 +5,22 @@
   "trailingSlash": false,
 
   "rewrites": [
-    { "source": "/", "destination": "/login.html" },
-    { "source": "/login", "destination": "/login.html" },
-    { "source": "/dashboard", "destination": "/index.html" },
-    { "source": "/scan", "destination": "/scan.html" },
-    { "source": "/inventory", "destination": "/inventory.html" },
-    { "source": "/protected-spaces", "destination": "/protected-spaces.html" },
-    { "source": "/history", "destination": "/history.html" },
-    { "source": "/reports", "destination": "/reports.html" },
-    { "source": "/settings", "destination": "/settings.html" }
+    { "source": "/", "destination": "/public/login.html" },
+    { "source": "/login", "destination": "/public/login.html" },
+    { "source": "/dashboard", "destination": "/public/index.html" },
+    { "source": "/scan", "destination": "/public/scan.html" },
+    { "source": "/inventory", "destination": "/public/inventory.html" },
+    { "source": "/protected-spaces", "destination": "/public/protected-spaces.html" },
+    { "source": "/history", "destination": "/public/history.html" },
+    { "source": "/reports", "destination": "/public/reports.html" },
+    { "source": "/settings", "destination": "/public/settings.html" }
   ],
 
   "redirects": [
-    { "source": "/index", "destination": "/dashboard", "permanent": true },
-    { "source": "/home", "destination": "/dashboard", "permanent": true },
-    { "source": "/signin", "destination": "/login", "permanent": true },
-    { "source": "/sign-in", "destination": "/login", "permanent": true }
+    { "source": "/index", "destination": "/public/dashboard.html", "permanent": true },
+    { "source": "/home", "destination": "/public/dashboard.html", "permanent": true },
+    { "source": "/signin", "destination": "/public/login.html", "permanent": true },
+    { "source": "/sign-in", "destination": "/public/login.html", "permanent": true }
   ],
 
   "headers": [
@@ -34,19 +34,19 @@
       ]
     },
     {
-      "source": "/login.html",
+      "source": "/public/login.html",
       "headers": [
         { "key": "Cache-Control", "value": "no-store, max-age=0" }
       ]
     },
     {
-      "source": "/index.html",
+      "source": "/public/index.html",
       "headers": [
         { "key": "Cache-Control", "value": "no-store, max-age=0" }
       ]
     },
     {
-      "source": "/(.*).html",
+      "source": "/public/(.*).html",
       "headers": [
         { "key": "Cache-Control", "value": "no-store, max-age=0" }
       ]
