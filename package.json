@@ -1,0 +1,24 @@
+{
+  "name": "hostel-checker",
+  "version": "1.0.0",
+  "type": "module",
+  "dependencies": {
+    "@supabase/supabase-js": "^2.117.3",
+    "adm-zip": "^0.6.1",
+    "chalk": "^5.3.0",
+    "dotenv": "^17.2.3",
+    "fs-extra": "^11.2.0",
+    "prompt-sync": "^4.2.0",
+    "puppeteer": "^23.0.0",
+    "selenium-webdriver": "^4.15.0",
+    "tempy": "^3.2.0"
+  },
+  "description": "",
+  "main": "hostelChecker.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
+}

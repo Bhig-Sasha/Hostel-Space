@@ -1,0 +1,1371 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#10233f">
+  <title>Protected Spaces | HostelTrack</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Merriweather:wght@700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+
+  <style>
+    :root {
+      --navy: #10233f;
+      --navy-light: #1a3458;
+      --gold: #d6ad4b;
+      --paper: #f5f1e8;
+      --white: #fff;
+      --text: #26354a;
+      --muted: #7b8798;
+      --border: #e6e8ed;
+      --green: #18794e;
+      --green-bg: #e8f6ee;
+      --red: #b42318;
+      --red-bg: #fcebea;
+      --orange: #a65a12;
+      --orange-bg: #fff2df;
+      --purple: #6941c6;
+      --purple-bg: #f0eaff;
+      --shadow: 0 8px 28px rgba(16,35,63,.055);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: var(--paper);
+      color: var(--text);
+      font-family: Inter, sans-serif;
+      font-size: 13px;
+    }
+
+    button, input, select, textarea { font: inherit; }
+    button { cursor: pointer; }
+    button:disabled { opacity: .55; cursor: not-allowed; }
+
+    .sidebar {
+      width: 248px;
+      background: var(--navy);
+      color: white;
+      position: fixed;
+      inset: 0 auto 0 0;
+      z-index: 30;
+      display: flex;
+      flex-direction: column;
+      padding: 25px 15px;
+      transition: transform .25s;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 0 9px 27px;
+      border-bottom: 1px solid rgba(255,255,255,.12);
+    }
+
+    .brand-icon {
+      width: 43px;
+      height: 43px;
+      display: grid;
+      place-items: center;
+      background: var(--gold);
+      color: var(--navy);
+      border-radius: 12px;
+      font-size: 19px;
+    }
+
+    .brand h2 { margin: 0 0 5px; font: 700 15px Merriweather, serif; }
+    .brand p { margin: 0; color: #bdc9d9; font-size: 10px; }
+
+    .nav-label {
+      margin: 25px 10px 11px;
+      color: #8e9db3;
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1.2px;
+    }
+
+    .nav-link {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      color: #d1d9e5;
+      text-decoration: none;
+      padding: 12px 13px;
+      margin: 3px 0;
+      border-radius: 8px;
+      font-weight: 500;
+      transition: .2s;
+    }
+
+    .nav-link i { width: 18px; text-align: center; }
+    .nav-link:hover { background: rgba(255,255,255,.07); }
+
+    .nav-link.active {
+      background: rgba(214,173,75,.15);
+      color: #f4d98c;
+      border-left: 3px solid var(--gold);
+      padding-left: 10px;
+    }
+
+    .sidebar-footer {
+      margin-top: auto;
+      padding: 16px 10px 0;
+      border-top: 1px solid rgba(255,255,255,.12);
+      color: #aebcd0;
+      font-size: 11px;
+      line-height: 1.8;
+    }
+
+    .sidebar-footer i { color: var(--gold); margin-right: 6px; }
+
+    .main { margin-left: 248px; min-width: 0; }
+
+    .topbar {
+      min-height: 72px;
+      background: rgba(255,255,255,.92);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 13px 30px;
+    }
+
+    .topbar-left { display: flex; align-items: center; gap: 12px; }
+    .topbar-title { font-weight: 700; color: var(--navy); font-size: 14px; }
+    .topbar-subtitle { color: var(--muted); font-size: 11px; margin-top: 4px; }
+    .topbar-right { display: flex; align-items: center; gap: 12px; }
+
+    .connection {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      color: var(--muted);
+      font-size: 11px;
+    }
+
+    .connection-dot { width: 8px; height: 8px; border-radius: 50%; background: #98a2b3; }
+    .connection.online .connection-dot { background: #22a06b; }
+    .menu-toggle { display: none; background: transparent; border: 0; font-size: 19px; color: var(--navy); }
+
+    .content { padding: 27px 30px 45px; max-width: 1700px; margin: auto; }
+
+    .page-heading {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 20px;
+      margin-bottom: 24px;
+    }
+
+    h1 { color: var(--navy); font: 700 25px Merriweather, serif; margin: 0 0 9px; letter-spacing: -.5px; }
+    .page-heading p { color: var(--muted); margin: 0; line-height: 1.6; }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 10px 14px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: white;
+      color: var(--text);
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    .btn:hover { border-color: #bac4d2; }
+    .btn-primary { background: var(--navy); color: white; border-color: var(--navy); }
+    .btn-primary:hover { background: var(--navy-light); }
+    .btn-gold { background: var(--gold); border-color: var(--gold); color: var(--navy); }
+    .btn-small { padding: 7px 10px; font-size: 11px; }
+    .btn-danger { color: var(--red); }
+
+    .notice {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 15px 16px;
+      border: 1px solid #ead9a9;
+      background: #fff9e9;
+      border-radius: 10px;
+      margin-bottom: 21px;
+      line-height: 1.6;
+    }
+
+    .notice > i { color: #9b751d; margin-top: 2px; font-size: 16px; }
+    .notice strong { color: var(--navy); display: block; margin-bottom: 3px; }
+    .notice span { color: #786747; font-size: 11px; }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 15px;
+      margin-bottom: 22px;
+    }
+
+    .stat-card, .panel {
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      box-shadow: var(--shadow);
+    }
+
+    .stat-card { padding: 19px; min-width: 0; }
+    .stat-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 15px; }
+    .stat-label { color: var(--muted); font-weight: 500; font-size: 11px; }
+
+    .stat-icon {
+      width: 35px; height: 35px; border-radius: 9px;
+      display: grid; place-items: center; background: #edf1f7; color: var(--navy);
+    }
+
+    .stat-number { font-size: 27px; font-weight: 700; color: var(--navy); }
+    .stat-foot { color: var(--muted); font-size: 10px; margin-top: 7px; }
+
+    .panel { margin-bottom: 21px; min-width: 0; }
+
+    .panel-header {
+      padding: 19px 21px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+    }
+
+    .panel-header h2 { color: var(--navy); font-size: 14px; margin: 0 0 5px; }
+    .panel-header p { color: var(--muted); font-size: 11px; margin: 0; line-height: 1.5; }
+    .panel-body { padding: 20px; }
+
+    .filters {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 13px;
+      margin-bottom: 18px;
+    }
+
+    .field { min-width: 0; }
+    .field label { display: block; color: #475467; font-weight: 600; font-size: 11px; margin-bottom: 7px; }
+
+    .field input, .field select, .field textarea {
+      width: 100%;
+      min-width: 0;
+      border: 1px solid #d9dee7;
+      background: white;
+      border-radius: 8px;
+      padding: 10px 11px;
+      outline: none;
+      color: var(--text);
+    }
+
+    .field input:focus, .field select:focus, .field textarea:focus {
+      border-color: #7188a8;
+      box-shadow: 0 0 0 3px rgba(16,35,63,.06);
+    }
+
+    .search-field { position: relative; }
+    .search-field i { position: absolute; left: 12px; top: 12px; color: #98a2b3; }
+    .search-field input { padding-left: 35px; }
+
+    .filter-actions { display: flex; align-items: flex-end; gap: 8px; }
+    .filter-actions .btn { min-height: 37px; }
+
+    .table-wrap { width: 100%; overflow-x: auto; }
+    table { border-collapse: collapse; width: 100%; min-width: 900px; }
+
+    th {
+      text-align: left;
+      background: #f8f9fb;
+      padding: 12px 15px;
+      color: #667085;
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: .5px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    td { padding: 14px 15px; border-bottom: 1px solid #edf0f4; color: #475467; vertical-align: middle; font-size: 11px; }
+    tbody tr:last-child td { border-bottom: 0; }
+    tbody tr:hover { background: #fbfcfe; }
+
+    .primary-text { color: var(--navy); font-weight: 700; }
+    .secondary-text { color: var(--muted); font-size: 10px; margin-top: 4px; }
+    .muted { color: var(--muted); }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      border-radius: 20px;
+      padding: 5px 8px;
+      font-size: 10px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .pill-green { background: #e8f6ee; color: #18794e; }
+    .pill-red { background: #fcebea; color: #b42318; }
+    .pill-orange { background: #fff2df; color: #a65a12; }
+    .pill-blue { background: #eaf1ff; color: #245bb2; }
+    .pill-purple { background: var(--purple-bg); color: var(--purple); }
+    .pill-grey { background: #eef0f3; color: #667085; }
+
+    .row-actions { display: flex; gap: 6px; }
+    .row-action {
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      padding: 7px 9px;
+      color: var(--navy);
+      font-weight: 600;
+      font-size: 10px;
+      white-space: nowrap;
+    }
+
+    .row-action.release { color: var(--red); }
+    .empty-state { text-align: center; padding: 45px 20px; color: var(--muted); }
+    .empty-state i { font-size: 28px; margin-bottom: 13px; color: #b0bac8; }
+    .empty-state strong { display: block; color: var(--navy); margin-bottom: 7px; }
+    .empty-state p { margin: 0; line-height: 1.7; font-size: 11px; }
+
+    .table-footer {
+      border-top: 1px solid var(--border);
+      padding: 13px 17px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      color: var(--muted);
+      font-size: 10px;
+    }
+
+    .pagination { display: flex; gap: 6px; }
+    .pagination button { background: white; border: 1px solid var(--border); border-radius: 6px; padding: 6px 10px; }
+
+    .form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 15px; }
+    .form-grid .full { grid-column: 1 / -1; }
+
+    .form-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-top: 20px;
+      padding-top: 17px;
+      border-top: 1px solid var(--border);
+    }
+
+    .form-help { color: var(--muted); font-size: 10px; line-height: 1.6; max-width: 440px; }
+
+    .detail-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 25px; }
+    .detail-line { display: flex; justify-content: space-between; align-items: flex-start; gap: 15px; padding: 13px 0; border-bottom: 1px solid var(--border); line-height: 1.6; }
+    .detail-line span { color: var(--muted); font-size: 10px; }
+    .detail-line strong { color: var(--navy); text-align: right; font-size: 11px; overflow-wrap: anywhere; }
+
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 80;
+      background: rgba(16,35,63,.45);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 18px;
+    }
+
+    .modal-backdrop.open { display: flex; }
+
+    .modal {
+      width: min(680px, 100%);
+      max-height: 92vh;
+      overflow-y: auto;
+      background: white;
+      border-radius: 14px;
+      box-shadow: 0 20px 70px rgba(0,0,0,.2);
+    }
+
+    .modal-header { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 20px 22px; border-bottom: 1px solid var(--border); }
+    .modal-header h2 { color: var(--navy); font-size: 15px; margin: 0; }
+    .modal-close { border: 0; background: transparent; color: var(--muted); font-size: 20px; }
+    .modal-content { padding: 22px; }
+
+    .toast {
+      position: fixed;
+      bottom: 22px;
+      right: 22px;
+      background: var(--navy);
+      color: white;
+      border-radius: 9px;
+      padding: 13px 17px;
+      box-shadow: var(--shadow);
+      z-index: 100;
+      max-width: min(420px, calc(100vw - 36px));
+      display: none;
+      line-height: 1.5;
+    }
+
+    .toast.show { display: block; }
+    .hidden { display: none !important; }
+
+    @media (max-width: 1200px) {
+      .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .filters { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+
+    @media (max-width: 850px) {
+      .sidebar { transform: translateX(-100%); }
+      .sidebar.open { transform: translateX(0); }
+      .main { margin-left: 0; }
+      .menu-toggle { display: block; }
+      .content { padding: 22px 17px 35px; }
+      .topbar { padding: 13px 17px; }
+    }
+
+    @media (max-width: 560px) {
+      h1 { font-size: 21px; }
+      .page-heading { flex-direction: column; }
+      .stats { gap: 10px; }
+      .stat-card { padding: 14px; }
+      .stat-number { font-size: 23px; }
+      .filters, .form-grid, .detail-grid { grid-template-columns: 1fr; }
+      .form-grid .full { grid-column: auto; }
+      .panel-header { padding: 15px; }
+      .panel-body { padding: 14px; }
+      .connection { display: none; }
+      .topbar-title { font-size: 12px; }
+    }
+  </style>
+</head>
+
+<body>
+<aside class="sidebar" id="sidebar">
+  <div class="brand">
+    <div class="brand-icon"><i class="fa-solid fa-bed"></i></div>
+    <div>
+      <h2>HostelTrack</h2>
+      <p>Private Hostel Management</p>
+    </div>
+  </div>
+
+<div class="nav-label">Workspace</div>
+  <a class="nav-link" href="index.html"><i class="fa-solid fa-chart-line"></i> Dashboard</a>
+  <a class="nav-link" href="scan.html"><i class="fa-solid fa-radar"></i> Scan for Space</a>
+  <a class="nav-link" href="inventory.html"><i class="fa-solid fa-building"></i> Inventory & Records</a>
+  <a class="nav-link active" href="protected-spaces.html"><i class="fa-solid fa-shield-halved"></i> Protected Spaces</a>
+  <a class="nav-link" href="history.html"><i class="fa-solid fa-clock-rotate-left"></i> Scan History</a>
+  <a class="nav-link" href="reports.html"><i class="fa-solid fa-file-export"></i> Reports & Exports</a>
+
+  <div class="nav-label">Configuration</div>
+  <a class="nav-link" href="settings.html"><i class="fa-solid fa-gear"></i> Settings</a>
+
+  <div class="sidebar-footer">
+    <i class="fa-solid fa-lock"></i> Private workspace
+    <br>Protected-space records are independent of scans.
+  </div>
+</aside>
+
+<main class="main">
+  <header class="topbar">
+    <div class="topbar-left">
+      <button class="menu-toggle" id="menuToggle" aria-label="Toggle navigation">
+        <i class="fa-solid fa-bars"></i>
+      </button>
+      <div>
+        <div class="topbar-title">Protected Spaces Register</div>
+        <div class="topbar-subtitle">Reserved, held and payment-pending bed spaces</div>
+      </div>
+    </div>
+
+    <div class="topbar-right">
+      <div class="connection" id="connection">
+        <span class="connection-dot"></span>
+        <span id="connectionText">Checking connection...</span>
+      </div>
+      <button class="btn btn-small" id="refreshBtn"><i class="fa-solid fa-rotate"></i> Refresh</button>
+    </div>
+  </header>
+
+  <div class="content">
+    <div class="page-heading">
+      <div>
+        <h1>Protected Spaces</h1>
+        <p>Maintain a separate record of bed spaces that must not be treated as available.</p>
+      </div>
+      <div class="row-actions">
+        <button class="btn" id="exportBtn"><i class="fa-solid fa-file-csv"></i> Export CSV</button>
+        <button class="btn btn-gold" id="addBtn"><i class="fa-solid fa-plus"></i> Add Protected Space</button>
+      </div>
+    </div>
+
+    <div class="notice">
+      <i class="fa-solid fa-shield-halved"></i>
+      <div>
+        <strong>This register is independent of portal scans.</strong>
+        <span>Adding a protection record should not require the bed to appear in the portal. A scan must never delete or automatically release a protected space.</span>
+      </div>
+    </div>
+
+    <section class="stats">
+      <div class="stat-card">
+        <div class="stat-top"><span class="stat-label">Active Protected Spaces</span><span class="stat-icon"><i class="fa-solid fa-shield-halved"></i></span></div>
+        <div class="stat-number" id="statActive">—</div>
+        <div class="stat-foot">Currently protected records</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-top"><span class="stat-label">Payment Pending</span><span class="stat-icon"><i class="fa-solid fa-hourglass-half"></i></span></div>
+        <div class="stat-number" id="statPayment">—</div>
+        <div class="stat-foot">Awaiting payment confirmation</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-top"><span class="stat-label">Reserved / Held</span><span class="stat-icon"><i class="fa-solid fa-lock"></i></span></div>
+        <div class="stat-number" id="statReserved">—</div>
+        <div class="stat-foot">Protected for another reason</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-top"><span class="stat-label">Released Records</span><span class="stat-icon"><i class="fa-solid fa-unlock"></i></span></div>
+        <div class="stat-number" id="statReleased">—</div>
+        <div class="stat-foot">Historical records retained</div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-header">
+        <div>
+          <h2>Protected-Space Register</h2>
+          <p>Search records, review their reasons and edit or explicitly release a protection.</p>
+        </div>
+        <span class="pill pill-grey" id="recordCount">0 records</span>
+      </div>
+
+      <div class="panel-body">
+        <div class="filters">
+          <div class="field">
+            <label for="searchInput">Search records</label>
+            <div class="search-field">
+              <i class="fa-solid fa-magnifying-glass"></i>
+              <input id="searchInput" type="search" placeholder="Hostel, room, bed, matric number...">
+            </div>
+          </div>
+
+          <div class="field">
+            <label for="campusFilter">Campus</label>
+            <select id="campusFilter">
+              <option value="">All campuses</option>
+              <option value="LEG">Legacy</option>
+              <option value="HER">Heritage</option>
+            </select>
+          </div>
+
+          <div class="field">
+            <label for="reasonFilter">Protection reason</label>
+            <select id="reasonFilter">
+              <option value="">All reasons</option>
+              <option value="payment_pending">Payment pending</option>
+              <option value="reserved">Reserved</option>
+              <option value="administrative_hold">Administrative hold</option>
+              <option value="maintenance">Maintenance</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+
+          <div class="field">
+            <label for="statusFilter">Record status</label>
+            <select id="statusFilter">
+              <option value="">Active and released</option>
+              <option value="active">Active only</option>
+              <option value="released">Released only</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Bed Space</th>
+                <th>Campus / Hostel</th>
+                <th>Reason</th>
+                <th>Student / Reference</th>
+                <th>Payment Status</th>
+                <th>Protection Status</th>
+                <th>Last Updated</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="protectedBody">
+              <tr><td colspan="8">
+                <div class="empty-state">
+                  <i class="fa-solid fa-database"></i>
+                  <strong>Loading protected-space records</strong>
+                  <p>Records will appear here when the backend API is connected.</p>
+                </div>
+              </td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="table-footer">
+          <span id="tableFooter">Waiting for records</span>
+          <div class="pagination">
+            <button id="prevPage" disabled aria-label="Previous page"><i class="fa-solid fa-chevron-left"></i></button>
+            <button id="nextPage" disabled aria-label="Next page"><i class="fa-solid fa-chevron-right"></i></button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-header">
+        <div>
+          <h2>Selected Record</h2>
+          <p>Review the full protection details for a record in the register.</p>
+        </div>
+        <span class="pill pill-grey" id="selectedBadge">No record selected</span>
+      </div>
+      <div class="panel-body" id="detailBody">
+        <div class="empty-state">
+          <i class="fa-solid fa-hand-pointer"></i>
+          <strong>Select a protected-space record</strong>
+          <p>Choose View from the register to see its complete details.</p>
+        </div>
+      </div>
+    </section>
+
+    <p id="pageMessage" class="muted">Connecting to the protected-space service...</p>
+  </div>
+</main>
+
+<!-- ADD / EDIT FORM -->
+<div class="modal-backdrop" id="recordModal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 id="modalTitle">Add Protected Space</h2>
+      <button class="modal-close" id="closeModal" aria-label="Close dialog">&times;</button>
+    </div>
+
+    <div class="modal-content">
+      <form id="protectedForm">
+        <div class="form-grid">
+          <div class="field">
+            <label for="campus">Campus *</label>
+            <select id="campus" name="campus_code" required>
+              <option value="">Select campus</option>
+              <option value="LEG">Legacy</option>
+              <option value="HER">Heritage</option>
+            </select>
+          </div>
+
+          <div class="field">
+            <label for="hostel">Hostel *</label>
+            <input id="hostel" name="hostel" required maxlength="100" placeholder="e.g. Above Only">
+          </div>
+
+          <div class="field">
+            <label for="level">Floor / Flat</label>
+            <input id="level" name="level" maxlength="80" placeholder="e.g. Flat 1 or Floor A">
+          </div>
+
+          <div class="field">
+            <label for="room">Room *</label>
+            <input id="room" name="room" required maxlength="80" placeholder="e.g. Room 12">
+          </div>
+
+          <div class="field">
+            <label for="bed">Bed Space *</label>
+            <input id="bed" name="bed" required maxlength="80" placeholder="e.g. Bed 3">
+          </div>
+
+          <div class="field">
+            <label for="reason">Protection Reason *</label>
+            <select id="reason" name="reason" required>
+              <option value="">Select reason</option>
+              <option value="payment_pending">Payment pending</option>
+              <option value="reserved">Reserved</option>
+              <option value="administrative_hold">Administrative hold</option>
+              <option value="maintenance">Maintenance</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+
+          <div class="field">
+            <label for="paymentStatus">Payment Status</label>
+            <select id="paymentStatus" name="payment_status">
+              <option value="not_applicable">Not applicable</option>
+              <option value="pending">Pending</option>
+              <option value="partially_paid">Partially paid</option>
+              <option value="confirmed">Confirmed</option>
+              <option value="unverified">Unverified</option>
+            </select>
+          </div>
+
+          <div class="field">
+            <label for="recordStatus">Protection Status</label>
+            <select id="recordStatus" name="status">
+              <option value="active">Active protection</option>
+              <option value="released">Released</option>
+            </select>
+          </div>
+
+          <div class="field">
+            <label for="studentName">Student Name (optional)</label>
+            <input id="studentName" name="student_name" maxlength="150" placeholder="Name if known">
+          </div>
+
+          <div class="field">
+            <label for="matricNumber">Matric Number (optional)</label>
+            <input id="matricNumber" name="matric_number" maxlength="80" placeholder="Matric number if known">
+          </div>
+
+          <div class="field">
+            <label for="allocationReference">Allocation / Payment Reference</label>
+            <input id="allocationReference" name="allocation_reference" maxlength="120" placeholder="Reference number if available">
+          </div>
+
+          <div class="field">
+            <label for="reviewDate">Review Date (optional)</label>
+            <input id="reviewDate" name="review_date" type="date">
+          </div>
+
+          <div class="field full">
+            <label for="reasonDetails">Reason Details *</label>
+            <textarea id="reasonDetails" name="reason_details" rows="3" required maxlength="2000" placeholder="Explain why this space must remain protected and the source of the information."></textarea>
+          </div>
+
+          <div class="field full">
+            <label for="notes">Additional Notes</label>
+            <textarea id="notes" name="notes" rows="3" maxlength="3000" placeholder="Verification notes, follow-up requirements, or relevant context."></textarea>
+          </div>
+        </div>
+
+        <div class="form-footer">
+          <div class="form-help">
+            Protection is maintained independently of scans. Releasing a record is a separate, explicit action; a new scan cannot release it automatically.
+          </div>
+          <div class="row-actions">
+            <button type="button" class="btn" id="cancelForm">Cancel</button>
+            <button type="submit" class="btn btn-primary" id="saveBtn">
+              <i class="fa-solid fa-floppy-disk"></i> Save Record
+            </button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+  /*
+    BACKEND CONTRACT
+
+    GET    /api/protected-spaces
+    GET    /api/protected-spaces/:id
+    POST   /api/protected-spaces
+    PATCH  /api/protected-spaces/:id
+    POST   /api/protected-spaces/:id/release
+
+    Suggested response for GET /api/protected-spaces:
+    {
+      "items": [{
+        "id": "hold-001",
+        "campus_code": "LEG",
+        "campus": "Legacy",
+        "hostel_id": "hostel-1",
+        "hostel": "Above Only",
+        "level": "Flat 1",
+        "room": "Room 12",
+        "bed": "Bed 3",
+        "reason": "payment_pending",
+        "reason_details": "Payment confirmation is pending.",
+        "payment_status": "pending",
+        "status": "active",
+        "student_name": null,
+        "matric_number": null,
+        "allocation_reference": "REF-001",
+        "review_date": null,
+        "notes": "",
+        "created_at": "2026-10-12T10:00:00Z",
+        "updated_at": "2026-10-12T10:00:00Z",
+        "released_at": null
+      }]
+    }
+
+    IMPORTANT:
+    - Keep protected spaces in their own persistent database table.
+    - Scans may update portal observations, never delete protection records.
+    - A protection record can be released only through the explicit release action.
+    - Backend must validate duplicate active holds for the same bed.
+    - This frontend assumes a trusted private backend; add authentication before
+      exposing it beyond your own local environment.
+  */
+
+  const API_BASE = "/api";
+  const PAGE_SIZE = 15;
+
+  const state = {
+    records: [],
+    filtered: [],
+    selected: null,
+    editingId: null,
+    page: 0
+  };
+
+  const $ = id => document.getElementById(id);
+
+  async function api(path, options = {}) {
+    const response = await fetch(API_BASE + path, {
+      ...options,
+      headers: {
+        "Accept": "application/json",
+        ...(options.body ? { "Content-Type": "application/json" } : {}),
+        ...options.headers
+      }
+    });
+
+    if (!response.ok) {
+      let message = `Request failed (${response.status})`;
+      try {
+        const data = await response.json();
+        message = data.message || data.error || message;
+      } catch {}
+      throw new Error(message);
+    }
+
+    if (response.status === 204) return {};
+    return response.json();
+  }
+
+  function escapeHTML(value) {
+    return String(value ?? "").replace(/[&<>"']/g, char => ({
+      "&": "&amp;", "<": "&lt;", ">": "&gt;",
+      '"': "&quot;", "'": "&#39;"
+    })[char]);
+  }
+
+  function norm(value) {
+    return String(value ?? "").trim().toLowerCase();
+  }
+
+  function showToast(message) {
+    const toast = $("toast");
+    toast.textContent = message;
+    toast.classList.add("show");
+    clearTimeout(showToast.timer);
+    showToast.timer = setTimeout(() => toast.classList.remove("show"), 3800);
+  }
+
+  function setConnection(online) {
+    $("connection").classList.toggle("online", online);
+    $("connectionText").textContent = online ? "Backend connected" : "Backend unavailable";
+  }
+
+  function formatDate(value) {
+    if (!value) return "Not recorded";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return String(value);
+    return date.toLocaleString([], {
+      year: "numeric", month: "short", day: "numeric",
+      hour: "2-digit", minute: "2-digit"
+    });
+  }
+
+  function pill(label, type = "grey") {
+    return `<span class="pill pill-${type}">${escapeHTML(label)}</span>`;
+  }
+
+  function reasonLabel(reason) {
+    const labels = {
+      payment_pending: "Payment pending",
+      reserved: "Reserved",
+      administrative_hold: "Administrative hold",
+      maintenance: "Maintenance",
+      other: "Other"
+    };
+    return labels[reason] || reason || "Not recorded";
+  }
+
+  function paymentLabel(status) {
+    const labels = {
+      not_applicable: ["Not applicable", "grey"],
+      pending: ["Pending", "orange"],
+      partially_paid: ["Partially paid", "blue"],
+      confirmed: ["Confirmed", "green"],
+      unverified: ["Unverified", "grey"]
+    };
+    return labels[status] || ["Unknown", "grey"];
+  }
+
+  function statusPill(status) {
+    return norm(status) === "released"
+      ? pill("Released", "grey")
+      : pill("Active", "purple");
+  }
+
+  function campusLabel(record) {
+    if (record.campus) return record.campus;
+    return record.campus_code === "LEG" ? "Legacy"
+      : record.campus_code === "HER" ? "Heritage" : "Not recorded";
+  }
+
+  function bedLocation(record) {
+    return [
+      record.level || record.floor || record.flat,
+      record.room,
+      record.bed
+    ].filter(Boolean).join(" / ");
+  }
+
+  function updateStats() {
+    const active = state.records.filter(r => norm(r.status) === "active");
+    $("statActive").textContent = active.length.toLocaleString();
+    $("statPayment").textContent = active.filter(r =>
+      r.reason === "payment_pending" ||
+      ["pending", "partially_paid"].includes(norm(r.payment_status))
+    ).length.toLocaleString();
+
+    $("statReserved").textContent = active.filter(r =>
+      ["reserved", "administrative_hold", "maintenance", "other"].includes(norm(r.reason))
+    ).length.toLocaleString();
+
+    $("statReleased").textContent = state.records.filter(r =>
+      norm(r.status) === "released"
+    ).length.toLocaleString();
+  }
+
+  function getFilteredRecords() {
+    const query = norm($("searchInput").value);
+    const campus = $("campusFilter").value;
+    const reason = $("reasonFilter").value;
+    const status = $("statusFilter").value;
+
+    return state.records.filter(record => {
+      if (campus && String(record.campus_code || "").toUpperCase() !== campus) return false;
+      if (reason && record.reason !== reason) return false;
+      if (status && norm(record.status) !== status) return false;
+
+      const text = norm([
+        record.id, record.campus, record.campus_code, record.hostel,
+        record.level, record.floor, record.flat, record.room, record.bed,
+        record.reason, reasonLabel(record.reason), record.reason_details,
+        record.student_name, record.matric_number, record.allocation_reference,
+        record.payment_status, record.notes
+      ].join(" "));
+
+      return !query || text.includes(query);
+    });
+  }
+
+  function renderTable() {
+    state.filtered = getFilteredRecords();
+
+    const total = state.filtered.length;
+    const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+    state.page = Math.min(state.page, pages - 1);
+
+    const start = state.page * PAGE_SIZE;
+    const records = state.filtered.slice(start, start + PAGE_SIZE);
+
+    $("recordCount").textContent = `${total} record${total === 1 ? "" : "s"}`;
+    $("tableFooter").textContent = total
+      ? `Showing ${start + 1}–${Math.min(start + PAGE_SIZE, total)} of ${total} records`
+      : "No matching records";
+
+    $("prevPage").disabled = state.page === 0;
+    $("nextPage").disabled = state.page >= pages - 1 || total === 0;
+
+    if (!records.length) {
+      $("protectedBody").innerHTML = `
+        <tr><td colspan="8">
+          <div class="empty-state">
+            <i class="fa-solid fa-shield-halved"></i>
+            <strong>No protected spaces found</strong>
+            <p>Add a protection record or change your search filters.</p>
+          </div>
+        </td></tr>`;
+      return;
+    }
+
+    $("protectedBody").innerHTML = records.map(record => {
+      const payment = paymentLabel(record.payment_status);
+      return `<tr>
+        <td>
+          <div class="primary-text">${escapeHTML(record.hostel || "Unknown hostel")}</div>
+          <div class="secondary-text">${escapeHTML(bedLocation(record) || "Bed location incomplete")}</div>
+        </td>
+        <td>
+          <div class="primary-text">${escapeHTML(campusLabel(record))}</div>
+          <div class="secondary-text">${escapeHTML(record.hostel || "Hostel not recorded")}</div>
+        </td>
+        <td>
+          <div>${escapeHTML(reasonLabel(record.reason))}</div>
+          <div class="secondary-text">${escapeHTML(record.reason_details || "")}</div>
+        </td>
+        <td>
+          <div>${escapeHTML(record.student_name || "Student not recorded")}</div>
+          <div class="secondary-text">${escapeHTML(record.matric_number || record.allocation_reference || "No reference")}</div>
+        </td>
+        <td>${pill(payment[0], payment[1])}</td>
+        <td>${statusPill(record.status)}</td>
+        <td>${escapeHTML(formatDate(record.updated_at || record.created_at))}</td>
+        <td>
+          <div class="row-actions">
+            <button class="row-action" data-action="view" data-id="${escapeHTML(record.id)}">View</button>
+            <button class="row-action" data-action="edit" data-id="${escapeHTML(record.id)}">Edit</button>
+            ${norm(record.status) === "active"
+              ? `<button class="row-action release" data-action="release" data-id="${escapeHTML(record.id)}">Release</button>`
+              : ""}
+          </div>
+        </td>
+      </tr>`;
+    }).join("");
+  }
+
+  function renderDetail(record) {
+    state.selected = record;
+    $("selectedBadge").textContent = record
+      ? `${record.hostel || "Protected space"} · ${record.bed || record.room || record.id}`
+      : "No record selected";
+
+    if (!record) {
+      $("detailBody").innerHTML = `
+        <div class="empty-state">
+          <i class="fa-solid fa-hand-pointer"></i>
+          <strong>Select a protected-space record</strong>
+          <p>Choose View from the register to see its complete details.</p>
+        </div>`;
+      return;
+    }
+
+    const payment = paymentLabel(record.payment_status);
+
+    $("detailBody").innerHTML = `
+      <div class="detail-grid">
+        <div class="detail-line"><span>Record ID</span><strong>${escapeHTML(record.id)}</strong></div>
+        <div class="detail-line"><span>Protection status</span><strong>${statusPill(record.status)}</strong></div>
+        <div class="detail-line"><span>Campus</span><strong>${escapeHTML(campusLabel(record))}</strong></div>
+        <div class="detail-line"><span>Hostel</span><strong>${escapeHTML(record.hostel || "Not recorded")}</strong></div>
+        <div class="detail-line"><span>Floor / Flat</span><strong>${escapeHTML(record.level || record.floor || record.flat || "Not recorded")}</strong></div>
+        <div class="detail-line"><span>Room</span><strong>${escapeHTML(record.room || "Not recorded")}</strong></div>
+        <div class="detail-line"><span>Bed space</span><strong>${escapeHTML(record.bed || "Not recorded")}</strong></div>
+        <div class="detail-line"><span>Reason</span><strong>${escapeHTML(reasonLabel(record.reason))}</strong></div>
+        <div class="detail-line"><span>Payment status</span><strong>${pill(payment[0], payment[1])}</strong></div>
+        <div class="detail-line"><span>Student name</span><strong>${escapeHTML(record.student_name || "Not recorded")}</strong></div>
+        <div class="detail-line"><span>Matric number</span><strong>${escapeHTML(record.matric_number || "Not recorded")}</strong></div>
+        <div class="detail-line"><span>Allocation / payment reference</span><strong>${escapeHTML(record.allocation_reference || "Not recorded")}</strong></div>
+        <div class="detail-line"><span>Review date</span><strong>${escapeHTML(record.review_date || "Not scheduled")}</strong></div>
+        <div class="detail-line"><span>Created</span><strong>${escapeHTML(formatDate(record.created_at))}</strong></div>
+        <div class="detail-line"><span>Last updated</span><strong>${escapeHTML(formatDate(record.updated_at))}</strong></div>
+        <div class="detail-line"><span>Released at</span><strong>${escapeHTML(formatDate(record.released_at))}</strong></div>
+      </div>
+      <div class="detail-line"><span>Reason details</span><strong>${escapeHTML(record.reason_details || "Not recorded")}</strong></div>
+      <div class="detail-line"><span>Additional notes</span><strong>${escapeHTML(record.notes || "No notes")}</strong></div>
+      <div class="form-footer">
+        <div class="form-help">This record remains in the historical register after release.</div>
+        <div class="row-actions">
+          <button class="btn btn-small" data-detail-action="edit"><i class="fa-solid fa-pen"></i> Edit</button>
+          ${norm(record.status) === "active"
+            ? `<button class="btn btn-small btn-danger" data-detail-action="release"><i class="fa-solid fa-unlock"></i> Release Protection</button>`
+            : ""}
+        </div>
+      </div>`;
+  }
+
+  function openModal(record = null) {
+    state.editingId = record ? record.id : null;
+    $("protectedForm").reset();
+    $("modalTitle").textContent = record ? "Edit Protected Space" : "Add Protected Space";
+    $("saveBtn").innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Save Record';
+
+    if (record) {
+      const fields = [
+        "campus_code", "hostel", "level", "room", "bed", "reason",
+        "payment_status", "status", "student_name", "matric_number",
+        "allocation_reference", "review_date", "reason_details", "notes"
+      ];
+
+      fields.forEach(key => {
+        const element = $(
+          ({
+            campus_code: "campus",
+            payment_status: "paymentStatus",
+            student_name: "studentName",
+            matric_number: "matricNumber",
+            allocation_reference: "allocationReference",
+            review_date: "reviewDate",
+            reason_details: "reasonDetails",
+            notes: "notes"
+          })[key] || key
+        );
+        if (element) element.value = record[key] ?? "";
+      });
+    } else {
+      $("recordStatus").value = "active";
+      $("paymentStatus").value = "unverified";
+    }
+
+    $("recordModal").classList.add("open");
+    $("campus").focus();
+  }
+
+  function closeModal() {
+    $("recordModal").classList.remove("open");
+    state.editingId = null;
+  }
+
+  function getFormPayload() {
+    const form = $("protectedForm");
+    const payload = Object.fromEntries(new FormData(form).entries());
+
+    payload.campus = payload.campus_code === "LEG" ? "Legacy"
+      : payload.campus_code === "HER" ? "Heritage" : "";
+
+    for (const key of Object.keys(payload)) {
+      if (typeof payload[key] === "string") payload[key] = payload[key].trim();
+    }
+
+    return payload;
+  }
+
+  async function saveRecord(event) {
+    event.preventDefault();
+
+    const payload = getFormPayload();
+    if (!payload.campus_code || !payload.hostel || !payload.room ||
+        !payload.bed || !payload.reason || !payload.reason_details) {
+      showToast("Please complete all required fields.");
+      return;
+    }
+
+    const duplicate = state.records.find(record =>
+      norm(record.status) === "active" &&
+      record.id !== state.editingId &&
+      String(record.campus_code).toUpperCase() === payload.campus_code &&
+      norm(record.hostel) === norm(payload.hostel) &&
+      norm(record.level || record.floor || record.flat) === norm(payload.level) &&
+      norm(record.room) === norm(payload.room) &&
+      norm(record.bed) === norm(payload.bed)
+    );
+
+    if (!state.editingId && duplicate) {
+      showToast("This bed already has an active protection record. Edit the existing record instead.");
+      return;
+    }
+
+    $("saveBtn").disabled = true;
+    $("saveBtn").innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Saving';
+
+    try {
+      if (state.editingId) {
+        await api(`/protected-spaces/${encodeURIComponent(state.editingId)}`, {
+          method: "PATCH",
+          body: JSON.stringify(payload)
+        });
+        showToast("Protected-space record updated.");
+      } else {
+        await api("/protected-spaces", {
+          method: "POST",
+          body: JSON.stringify(payload)
+        });
+        showToast("Protected-space record created.");
+      }
+
+      closeModal();
+      await loadRecords();
+    } catch (error) {
+      showToast(`Could not save record: ${error.message}`);
+    } finally {
+      $("saveBtn").disabled = false;
+      $("saveBtn").innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Save Record';
+    }
+  }
+
+  async function releaseRecord(id) {
+    const record = state.records.find(item => String(item.id) === String(id));
+    if (!record) return;
+
+    const location = [
+      record.hostel, record.room, record.bed
+    ].filter(Boolean).join(" / ");
+
+    const confirmed = window.confirm(
+      `Release protection for ${location || "this bed space"}?\n\n` +
+      "This will mark the protection as released; it will not delete the record. " +
+      "Release only after you have verified that the space can be made available."
+    );
+
+    if (!confirmed) return;
+
+    try {
+      await api(`/protected-spaces/${encodeURIComponent(id)}/release`, {
+        method: "POST",
+        body: JSON.stringify({ reason: "Manually released after confirmation" })
+      });
+
+      showToast("Protection released. Historical record retained.");
+      await loadRecords();
+    } catch (error) {
+      showToast(`Could not release protection: ${error.message}`);
+    }
+  }
+
+  function exportCSV() {
+    const rows = state.filtered;
+
+    if (!rows.length) {
+      showToast("There are no records to export.");
+      return;
+    }
+
+    const columns = [
+      ["Record ID", r => r.id],
+      ["Campus", campusLabel],
+      ["Hostel", r => r.hostel],
+      ["Floor / Flat", r => r.level || r.floor || r.flat],
+      ["Room", r => r.room],
+      ["Bed", r => r.bed],
+      ["Reason", r => reasonLabel(r.reason)],
+      ["Reason Details", r => r.reason_details],
+      ["Payment Status", r => r.payment_status],
+      ["Protection Status", r => r.status],
+      ["Student Name", r => r.student_name],
+      ["Matric Number", r => r.matric_number],
+      ["Allocation Reference", r => r.allocation_reference],
+      ["Review Date", r => r.review_date],
+      ["Notes", r => r.notes],
+      ["Created At", r => r.created_at],
+      ["Updated At", r => r.updated_at],
+      ["Released At", r => r.released_at]
+    ];
+
+    const quote = value => `"${String(value ?? "").replace(/"/g, '""')}"`;
+    const csv = [
+      columns.map(([label]) => quote(label)).join(","),
+      ...rows.map(row => columns.map(([, get]) => quote(get(row))).join(","))
+    ].join("\r\n");
+
+    const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "protected-spaces.csv";
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+  }
+
+  async function loadRecords() {
+    $("pageMessage").textContent = "Loading protected-space records...";
+
+    try {
+      const data = await api("/protected-spaces");
+      state.records = Array.isArray(data) ? data : data.items || [];
+
+      updateStats();
+      renderTable();
+
+      if (state.selected) {
+        const refreshed = state.records.find(r =>
+          String(r.id) === String(state.selected.id)
+        );
+        renderDetail(refreshed || null);
+      }
+
+      setConnection(true);
+      $("pageMessage").textContent =
+        `${state.records.length} protected-space records loaded.`;
+    } catch (error) {
+      setConnection(false);
+      $("pageMessage").textContent =
+        `Unable to load protected-space records: ${error.message}. Implement GET /api/protected-spaces on your backend.`;
+
+      $("protectedBody").innerHTML = `
+        <tr><td colspan="8">
+          <div class="empty-state">
+            <i class="fa-solid fa-plug-circle-xmark"></i>
+            <strong>Backend not connected</strong>
+            <p>${escapeHTML(error.message)}. The register needs the protected-space API and a persistent database.</p>
+          </div>
+        </td></tr>`;
+    }
+  }
+
+  $("menuToggle").addEventListener("click", () => $("sidebar").classList.toggle("open"));
+  document.querySelectorAll(".nav-link").forEach(link => {
+    link.addEventListener("click", () => $("sidebar").classList.remove("open"));
+  });
+
+  $("addBtn").addEventListener("click", () => openModal());
+  $("closeModal").addEventListener("click", closeModal);
+  $("cancelForm").addEventListener("click", closeModal);
+  $("protectedForm").addEventListener("submit", saveRecord);
+  $("refreshBtn").addEventListener("click", loadRecords);
+  $("exportBtn").addEventListener("click", exportCSV);
+
+  $("recordModal").addEventListener("click", event => {
+    if (event.target === $("recordModal")) closeModal();
+  });
+
+  document.addEventListener("keydown", event => {
+    if (event.key === "Escape") closeModal();
+  });
+
+  ["searchInput", "campusFilter", "reasonFilter", "statusFilter"].forEach(id => {
+    $(id).addEventListener(id === "searchInput" ? "input" : "change", () => {
+      state.page = 0;
+      renderTable();
+    });
+  });
+
+  $("prevPage").addEventListener("click", () => {
+    if (state.page > 0) state.page--;
+    renderTable();
+  });
+
+  $("nextPage").addEventListener("click", () => {
+    state.page++;
+    renderTable();
+  });
+
+  $("protectedBody").addEventListener("click", async event => {
+    const button = event.target.closest("[data-action]");
+    if (!button) return;
+
+    const record = state.records.find(item =>
+      String(item.id) === button.dataset.id
+    );
+    if (!record) return;
+
+    if (button.dataset.action === "view") {
+      renderDetail(record);
+      $("detailBody").scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+
+    if (button.dataset.action === "edit") openModal(record);
+    if (button.dataset.action === "release") await releaseRecord(record.id);
+  });
+
+  $("detailBody").addEventListener("click", async event => {
+    const button = event.target.closest("[data-detail-action]");
+    if (!button || !state.selected) return;
+
+    if (button.dataset.detailAction === "edit") openModal(state.selected);
+    if (button.dataset.detailAction === "release") await releaseRecord(state.selected.id);
+  });
+
+  loadRecords();
+</script>
+</body>
+</html>

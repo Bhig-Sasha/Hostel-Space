@@ -1,0 +1,70 @@
+
+hostel-space-finder/
+├── package.json
+├── .env
+├── .env.example
+├── .gitignore
+├── README.md
+│
+├── public/
+│   ├── index.html
+│   └── pages/
+│       ├── dashboard.html
+│       ├── scan.html
+│       ├── inventory.html
+│       ├── protected-spaces.html
+│       ├── history.html
+│       ├── reports.html
+│       └── settings.html
+│
+├── src/
+│   ├── server.js
+│   ├── app.js
+│   ├── routes/
+│   │   ├── dashboard.routes.js
+│   │   ├── scanner.routes.js
+│   │   ├── inventory.routes.js
+│   │   ├── students.routes.js
+│   │   ├── protected-spaces.routes.js
+│   │   ├── history.routes.js
+│   │   ├── reports.routes.js
+│   │   └── settings.routes.js
+│   ├── services/
+│   │   ├── scanner.service.js
+│   │   ├── inventory.service.js
+│   │   ├── allocation.service.js
+│   │   ├── protected-spaces.service.js
+│   │   ├── scan-history.service.js
+│   │   └── report.service.js
+│   ├── scanner/
+│   │   ├── portal-client.js
+│   │   ├── hostel-scanner.js
+│   │   ├── result-parser.js
+│   │   └── scan-queue.js
+│   ├── database/
+│   │   ├── connection.js
+│   │   ├── migrations/
+│   │   ├── repositories/
+│   │   └── seed/
+│   ├── middleware/
+│   │   ├── error-handler.js
+│   │   └── validate-request.js
+│   ├── security/
+│   │   └── credential-store.js
+│   └── utils/
+│       ├── logger.js
+│       └── dates.js
+│
+├── data/
+│   ├── hostel-space-finder.db
+│   ├── backups/
+│   └── exports/
+│
+├── config/
+│   └── hostelConfig.js
+│
+└── tests/
+    ├── scanner.test.js
+    ├── inventory.test.js
+    ├── protected-spaces.test.js
+    └── scan-history.test.js

@@ -1,0 +1,1895 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#10233f">
+  <title>Scan for Space | Hostel Space Finder</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Merriweather:wght@700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
+
+  <style>
+    :root {
+      --navy: #10233f;
+      --navy-light: #1b3557;
+      --gold: #d6ad4b;
+      --gold-soft: #fbf4e2;
+      --background: #f5f1e8;
+      --surface: #fff;
+      --text: #172438;
+      --muted: #758094;
+      --border: #e6e9ef;
+      --green: #20845a;
+      --green-soft: #e7f6ee;
+      --red: #c34444;
+      --red-soft: #fff0ef;
+      --orange: #ad7419;
+      --orange-soft: #fff5df;
+      --blue: #3468b3;
+      --blue-soft: #edf3ff;
+      --sidebar-width: 255px;
+      --radius: 14px;
+      --shadow: 0 3px 14px rgba(16,35,63,.045);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      min-height: 100vh;
+      background: var(--background);
+      color: var(--text);
+      font-family: "Inter", sans-serif;
+      font-size: 14px;
+    }
+
+    button, input, select { font: inherit; }
+    button, a { -webkit-tap-highlight-color: transparent; }
+    a { color: inherit; text-decoration: none; }
+    button { cursor: pointer; }
+
+    .sidebar {
+      position: fixed;
+      inset: 0 auto 0 0;
+      z-index: 100;
+      display: flex;
+      flex-direction: column;
+      width: var(--sidebar-width);
+      padding: 25px 17px 18px;
+      overflow-y: auto;
+      background: var(--navy);
+      color: white;
+      transition: transform .25s ease;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 0 8px 27px;
+      border-bottom: 1px solid rgba(255,255,255,.11);
+    }
+
+    .brand-logo {
+      display: grid;
+      place-items: center;
+      width: 43px;
+      height: 43px;
+      flex-shrink: 0;
+      border-radius: 12px;
+      background: var(--gold);
+      color: var(--navy);
+      font-size: 20px;
+    }
+
+    .brand-name {
+      font-family: "Merriweather", serif;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    .brand-caption {
+      margin-top: 3px;
+      color: #b7c5d8;
+      font-size: 10px;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+    }
+
+    .nav-label {
+      margin: 27px 10px 11px;
+      color: #8fa2bb;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+    }
+
+    .nav-list { display: grid; gap: 5px; list-style: none; }
+
+    .nav-link {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-height: 45px;
+      padding: 0 13px;
+      border: 1px solid transparent;
+      border-radius: 9px;
+      color: #c6d0de;
+      font-size: 12px;
+    }
+
+    .nav-link i { width: 18px; text-align: center; font-size: 15px; }
+    .nav-link:hover { background: rgba(255,255,255,.07); color: white; }
+
+    .nav-link.active {
+      border-color: rgba(214,173,75,.2);
+      background: rgba(214,173,75,.14);
+      color: #f3d78f;
+    }
+
+    .sidebar-bottom { margin-top: auto; padding-top: 25px; }
+
+    .connection-card {
+      padding: 14px;
+      border: 1px solid rgba(255,255,255,.12);
+      border-radius: 11px;
+      background: rgba(255,255,255,.045);
+    }
+
+    .connection-heading {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: #e6edf5;
+      font-size: 11px;
+      font-weight: 600;
+    }
+
+    .connection-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--gold);
+    }
+
+    .connection-card p {
+      margin-top: 8px;
+      color: #9eb0c7;
+      font-size: 10px;
+      line-height: 1.7;
+    }
+
+    .sidebar-footer {
+      padding: 19px 8px 0;
+      color: #8194ad;
+      font-size: 10px;
+      line-height: 1.8;
+    }
+
+    .main { min-height: 100vh; margin-left: var(--sidebar-width); }
+
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+      min-height: 76px;
+      padding: 14px 32px;
+      border-bottom: 1px solid var(--border);
+      background: rgba(255,255,255,.96);
+      backdrop-filter: blur(12px);
+    }
+
+    .topbar-left, .topbar-right { display: flex; align-items: center; gap: 13px; }
+    .topbar-right { margin-left: auto; }
+
+    .breadcrumb { color: var(--muted); font-size: 12px; }
+    .breadcrumb strong { color: var(--text); }
+
+    .icon-button {
+      display: grid;
+      place-items: center;
+      width: 38px;
+      height: 38px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: white;
+      color: #5b687a;
+    }
+
+    .mobile-menu { display: none; }
+    .date-display { color: var(--muted); font-size: 11px; white-space: nowrap; }
+
+    .profile {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding-left: 13px;
+      border-left: 1px solid var(--border);
+    }
+
+    .profile-avatar {
+      display: grid;
+      place-items: center;
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: var(--navy);
+      color: var(--gold);
+      font-weight: 700;
+    }
+
+    .profile-name { font-size: 12px; font-weight: 600; }
+    .profile-caption { margin-top: 4px; color: var(--muted); font-size: 10px; }
+
+    .content { max-width: 1650px; margin: 0 auto; padding: 30px 32px 40px; }
+
+    .page-heading {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 20px;
+      margin-bottom: 24px;
+    }
+
+    .eyebrow {
+      margin-bottom: 8px;
+      color: #94701f;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+    }
+
+    h1, h2, h3 { color: var(--navy); }
+
+    h1 {
+      font-family: "Merriweather", serif;
+      font-size: clamp(22px, 2.1vw, 29px);
+      line-height: 1.4;
+    }
+
+    h2 { font-size: 13px; }
+
+    .description {
+      max-width: 700px;
+      margin-top: 9px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.8;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 9px;
+      min-height: 41px;
+      padding: 0 15px;
+      border: 1px solid transparent;
+      border-radius: 9px;
+      font-size: 11px;
+      font-weight: 600;
+      transition: background .2s, transform .2s;
+    }
+
+    .btn:hover { transform: translateY(-1px); }
+    .btn:disabled { cursor: not-allowed; opacity: .55; transform: none; }
+
+    .btn-primary { background: var(--navy); color: white; }
+    .btn-primary:hover { background: var(--navy-light); }
+    .btn-gold { background: var(--gold); color: var(--navy); }
+    .btn-outline { border-color: var(--border); background: white; color: var(--navy); }
+    .btn-danger { border-color: #f0c6c3; background: var(--red-soft); color: var(--red); }
+
+    .panel {
+      min-width: 0;
+      overflow: hidden;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--surface);
+      box-shadow: var(--shadow);
+    }
+
+    .panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 19px 21px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .panel-subtitle {
+      margin-top: 5px;
+      color: var(--muted);
+      font-size: 10.5px;
+      line-height: 1.7;
+    }
+
+    .panel-body { padding: 21px; }
+
+    .scan-layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1.35fr) minmax(280px, .75fr);
+      gap: 20px;
+      margin-bottom: 21px;
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 17px;
+    }
+
+    .field { min-width: 0; }
+    .field.full { grid-column: 1 / -1; }
+
+    .field label {
+      display: block;
+      margin-bottom: 8px;
+      color: #39485d;
+      font-size: 11px;
+      font-weight: 600;
+    }
+
+    .field-hint {
+      margin-top: 7px;
+      color: var(--muted);
+      font-size: 10px;
+      line-height: 1.7;
+    }
+
+    .input, .select, .textarea {
+      display: block;
+      width: 100%;
+      min-height: 42px;
+      padding: 10px 12px;
+      border: 1px solid #dfe4eb;
+      border-radius: 9px;
+      outline: none;
+      background: #fff;
+      color: var(--text);
+      font-size: 11px;
+    }
+
+    .textarea { min-height: 85px; resize: vertical; }
+
+    .input:focus, .select:focus, .textarea:focus {
+      border-color: #9baec8;
+      box-shadow: 0 0 0 3px #edf2f9;
+    }
+
+    .scope-options { display: flex; flex-wrap: wrap; gap: 9px; }
+
+    .scope-option {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 12px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: #4b586b;
+      font-size: 10.5px;
+      cursor: pointer;
+    }
+
+    .scope-option:has(input:checked) {
+      border-color: #c7a64d;
+      background: #fffcf3;
+      color: var(--navy);
+    }
+
+    .scope-option input { accent-color: var(--navy); }
+
+    .scan-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 9px;
+      margin-top: 22px;
+      padding-top: 18px;
+      border-top: 1px solid var(--border);
+    }
+
+    .notice {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 13px;
+      border: 1px solid #e9dcba;
+      border-radius: 9px;
+      background: #fffbf1;
+      color: #785c1b;
+      font-size: 10px;
+      line-height: 1.8;
+    }
+
+    .notice i { margin-top: 2px; }
+
+    .notice.blue {
+      border-color: #dbe5f4;
+      background: #f4f8ff;
+      color: #385983;
+    }
+
+    .progress-summary {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 15px;
+    }
+
+    .progress-number {
+      color: var(--navy);
+      font-size: 25px;
+      font-weight: 700;
+      letter-spacing: -1px;
+    }
+
+    .muted { color: var(--muted); font-size: 10px; }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 9px;
+      border-radius: 6px;
+      font-size: 10px;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    .pill i { font-size: 7px; }
+    .pill-neutral { background: #edf0f5; color: #637083; }
+    .pill-green { background: var(--green-soft); color: var(--green); }
+    .pill-orange { background: var(--orange-soft); color: var(--orange); }
+    .pill-red { background: var(--red-soft); color: var(--red); }
+    .pill-blue { background: var(--blue-soft); color: var(--blue); }
+
+    .progress-track {
+      height: 9px;
+      overflow: hidden;
+      border-radius: 20px;
+      background: #edf0f4;
+    }
+
+    .progress-fill {
+      width: 0%;
+      height: 100%;
+      border-radius: inherit;
+      background: var(--gold);
+      transition: width .35s ease;
+    }
+
+    .progress-meta {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      margin-top: 9px;
+      color: var(--muted);
+      font-size: 10px;
+    }
+
+    .step-list {
+      display: grid;
+      gap: 0;
+      margin-top: 22px;
+    }
+
+    .step {
+      display: flex;
+      align-items: flex-start;
+      gap: 11px;
+      padding: 12px 0;
+      border-bottom: 1px solid #edf0f4;
+    }
+
+    .step:last-child { border-bottom: 0; }
+
+    .step-icon {
+      display: grid;
+      place-items: center;
+      width: 28px;
+      height: 28px;
+      flex-shrink: 0;
+      border-radius: 8px;
+      background: #f0f2f6;
+      color: #8792a2;
+      font-size: 10px;
+    }
+
+    .step.done .step-icon { background: var(--green-soft); color: var(--green); }
+    .step.current .step-icon { background: var(--gold-soft); color: #9b751e; }
+
+    .step-title { color: #35445a; font-size: 10.5px; font-weight: 600; }
+    .step-description { margin-top: 4px; color: var(--muted); font-size: 9.5px; line-height: 1.7; }
+
+    .metric-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 14px;
+      margin-bottom: 21px;
+    }
+
+    .metric {
+      padding: 16px 18px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: white;
+    }
+
+    .metric-label { color: var(--muted); font-size: 10px; }
+    .metric-number { margin-top: 10px; color: var(--navy); font-size: 24px; font-weight: 700; }
+    .metric-note { margin-top: 6px; color: var(--muted); font-size: 9px; line-height: 1.7; }
+
+    .results-toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 14px 20px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .filters { display: flex; flex-wrap: wrap; gap: 8px; }
+
+    .filter-select {
+      min-height: 36px;
+      padding: 0 10px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      outline: none;
+      background: white;
+      color: #344256;
+      font-size: 10px;
+    }
+
+    .search {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding-left: 11px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: #8a95a5;
+    }
+
+    .search input {
+      width: 180px;
+      min-height: 35px;
+      padding-right: 10px;
+      border: 0;
+      outline: none;
+      font-size: 10px;
+    }
+
+    .table-scroll { width: 100%; overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; text-align: left; white-space: nowrap; }
+    thead { background: #fafbfd; }
+
+    th {
+      padding: 13px 16px;
+      color: #7b8798;
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: .5px;
+      text-transform: uppercase;
+    }
+
+    td {
+      padding: 14px 16px;
+      border-top: 1px solid #edf0f4;
+      color: #4b586b;
+      font-size: 10px;
+    }
+
+    tbody tr:hover { background: #fcfcfd; }
+    .cell-main { color: var(--navy); font-weight: 600; }
+    .cell-sub { display: block; margin-top: 4px; color: #8b95a4; font-size: 9px; }
+
+    .table-action {
+      width: 30px;
+      height: 30px;
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      background: white;
+      color: #627087;
+    }
+
+    .table-action:hover { color: var(--navy); border-color: var(--gold); }
+
+    .empty-state {
+      padding: 34px 20px;
+      color: var(--muted);
+      text-align: center;
+      font-size: 11px;
+      line-height: 1.8;
+    }
+
+    .empty-state i { display: block; margin-bottom: 11px; font-size: 23px; }
+
+    .table-footer {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 14px 20px;
+      border-top: 1px solid var(--border);
+      color: var(--muted);
+      font-size: 10px;
+    }
+
+    .log-list {
+      display: grid;
+      max-height: 280px;
+      overflow-y: auto;
+      padding: 5px 20px;
+    }
+
+    .log-entry {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 11px 0;
+      border-bottom: 1px solid #edf0f4;
+      font-size: 10px;
+      line-height: 1.7;
+    }
+
+    .log-entry:last-child { border-bottom: 0; }
+    .log-time { flex-shrink: 0; color: #929cab; font-variant-numeric: tabular-nums; }
+    .log-message { color: #4b586b; overflow-wrap: anywhere; }
+    .log-message.error { color: var(--red); }
+    .log-message.success { color: var(--green); }
+
+    .footer {
+      display: flex;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 25px;
+      padding-top: 17px;
+      border-top: 1px solid #e0e4e9;
+      color: #8b95a3;
+      font-size: 10px;
+    }
+
+    .toast {
+      position: fixed;
+      right: 22px;
+      bottom: 22px;
+      z-index: 200;
+      max-width: min(380px, calc(100vw - 44px));
+      padding: 13px 17px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: white;
+      box-shadow: 0 8px 30px rgba(16,35,63,.15);
+      color: var(--navy);
+      font-size: 11px;
+      line-height: 1.7;
+      opacity: 0;
+      pointer-events: none;
+      transform: translateY(10px);
+      transition: opacity .2s, transform .2s;
+    }
+
+    .toast.show { opacity: 1; transform: translateY(0); }
+
+    .overlay { display: none; }
+
+    @media (max-width: 1200px) {
+      :root { --sidebar-width: 225px; }
+      .content { padding: 25px 22px 35px; }
+      .topbar { padding-right: 22px; padding-left: 22px; }
+      .scan-layout { grid-template-columns: 1fr; }
+      .metric-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+
+    @media (max-width: 760px) {
+      .sidebar { transform: translateX(-100%); box-shadow: none; }
+      .sidebar.open { transform: translateX(0); box-shadow: 10px 0 35px rgba(0,0,0,.18); }
+      .overlay.open { position: fixed; inset: 0; z-index: 90; display: block; background: rgba(12,25,44,.4); }
+      .main { margin-left: 0; }
+      .topbar { min-height: 65px; padding: 12px 16px; }
+      .mobile-menu { display: grid; }
+      .date-display { display: none; }
+      .profile { padding-left: 8px; }
+      .profile-copy { display: none; }
+      .content { padding: 23px 15px 30px; }
+      .page-heading { flex-direction: column; gap: 15px; }
+      .panel-header { padding: 16px; }
+      .panel-body { padding: 16px; }
+      .form-grid { grid-template-columns: 1fr; }
+      .field.full { grid-column: auto; }
+      .scan-actions .btn { flex: 1; }
+      .results-toolbar { padding: 13px 15px; }
+      .filters { width: 100%; }
+      .filter-select { flex: 1; min-width: 0; }
+      .search { width: 100%; }
+      .search input { width: 100%; min-width: 0; flex: 1; }
+      .metric-grid { gap: 10px; }
+      .metric { padding: 14px; }
+      .metric-number { font-size: 22px; }
+      .table-footer { padding: 13px 15px; }
+      .progress-meta { font-size: 9px; }
+    }
+
+    @media (max-width: 400px) {
+      .metric-grid { grid-template-columns: 1fr 1fr; }
+      .metric-label { font-size: 9px; }
+      .metric-number { font-size: 20px; }
+    }
+  </style>
+</head>
+
+<body>
+<div class="app">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar" id="sidebar">
+    <a href="dashboard.html" class="brand">
+      <div class="brand-logo"><i class="fa-solid fa-building-circle-check"></i></div>
+      <div>
+        <div class="brand-name">Hostel Space Finder</div>
+        <div class="brand-caption">Private Management Portal</div>
+      </div>
+    </a>
+
+    <div class="nav-label">Workspace</div>
+    <nav aria-label="Main navigation">
+      <ul class="nav-list">
+        <li><a href="dashboard.html" class="nav-link"><i class="fa-solid fa-chart-pie"></i><span>Dashboard</span></a></li>
+        <li><a href="scan.html" class="nav-link active" aria-current="page"><i class="fa-solid fa-magnifying-glass"></i><span>Scan for Space</span></a></li>
+        <li><a href="inventory.html" class="nav-link"><i class="fa-solid fa-building"></i><span>Hostel Inventory &amp; Records</span></a></li>
+        <li><a href="protected-spaces.html" class="nav-link"><i class="fa-solid fa-shield-halved"></i><span>Protected Spaces</span></a></li>
+      </ul>
+    </nav>
+
+    <div class="nav-label">Records &amp; Tools</div>
+    <nav aria-label="Records navigation">
+      <ul class="nav-list">
+        <li><a href="history.html" class="nav-link"><i class="fa-solid fa-clock-rotate-left"></i><span>Scan History</span></a></li>
+        <li><a href="reports.html" class="nav-link"><i class="fa-solid fa-file-excel"></i><span>Reports &amp; Exports</span></a></li>
+        <li><a href="settings.html" class="nav-link"><i class="fa-solid fa-gear"></i><span>Settings</span></a></li>
+      </ul>
+    </nav>
+
+    <div class="sidebar-bottom">
+      <div class="connection-card">
+        <div class="connection-heading"><span class="connection-dot"></span>Scanner connection</div>
+        <p id="connectionText">Backend connection has not been verified.</p>
+      </div>
+      <div class="sidebar-footer">Hostel Space Finder<br>Private workspace · v1.0.0</div>
+    </div>
+  </aside>
+
+  <div class="overlay" id="overlay"></div>
+
+  <main class="main">
+    <header class="topbar">
+      <div class="topbar-left">
+        <button class="icon-button mobile-menu" id="menuToggle" aria-label="Open navigation" aria-expanded="false">
+          <i class="fa-solid fa-bars"></i>
+        </button>
+        <div class="breadcrumb">Workspace <span style="margin:0 7px;">/</span><strong>Scan for Space</strong></div>
+      </div>
+
+      <div class="topbar-right">
+        <div class="date-display" id="currentDate"></div>
+        <button class="icon-button" id="refreshButton" title="Refresh scan status" aria-label="Refresh scan status">
+          <i class="fa-solid fa-rotate"></i>
+        </button>
+        <div class="profile">
+          <div class="profile-avatar">HS</div>
+          <div class="profile-copy">
+            <div class="profile-name">Workspace Owner</div>
+            <div class="profile-caption">Private account</div>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <div class="content">
+
+      <section class="page-heading">
+        <div>
+          <div class="eyebrow">Portal automation</div>
+          <h1>Scan for Space</h1>
+          <p class="description">
+            Check hostel availability using your configured portal scanner.
+            Each scan is saved independently so failed runs do not overwrite
+            your last successful results.
+          </p>
+        </div>
+      </section>
+
+      <!-- CONFIGURATION + PROGRESS -->
+      <section class="scan-layout">
+
+        <article class="panel">
+          <div class="panel-header">
+            <div>
+              <h2>Scan Configuration</h2>
+              <p class="panel-subtitle">Choose the scope for your next scan.</p>
+            </div>
+            <span class="pill pill-neutral" id="scannerReadyPill">
+              <i class="fa-solid fa-circle"></i> Checking backend
+            </span>
+          </div>
+
+          <div class="panel-body">
+            <form id="scanForm">
+              <div class="form-grid">
+
+                <div class="field full">
+                  <label>Scan scope</label>
+                  <div class="scope-options">
+                    <label class="scope-option">
+                      <input type="radio" name="scope" value="all" checked>
+                      All configured hostels
+                    </label>
+                    <label class="scope-option">
+                      <input type="radio" name="scope" value="campus">
+                      One campus
+                    </label>
+                    <label class="scope-option">
+                      <input type="radio" name="scope" value="hostel">
+                      One hostel
+                    </label>
+                  </div>
+                </div>
+
+                <div class="field">
+                  <label for="campus">Campus</label>
+                  <select class="select" id="campus" name="campus" disabled>
+                    <option value="">Loading campuses...</option>
+                  </select>
+                  <p class="field-hint">Used when scanning one campus or selecting a hostel.</p>
+                </div>
+
+                <div class="field">
+                  <label for="hostel">Hostel</label>
+                  <select class="select" id="hostel" name="hostelId" disabled>
+                    <option value="">Select a hostel</option>
+                  </select>
+                  <p class="field-hint">Choose a hostel for a targeted scan.</p>
+                </div>
+
+                <div class="field full">
+                  <label for="scanMode">Scan mode</label>
+                  <select class="select" id="scanMode" name="mode">
+                    <option value="full">Full scan — selected scope</option>
+                    <option value="retry_failed">Retry failed locations</option>
+                  </select>
+                  <p class="field-hint">
+                    Retry mode requires the backend to identify failed locations
+                    from a previous scan.
+                  </p>
+                </div>
+
+                <div class="field full">
+                  <label>Portal account</label>
+                  <div class="notice blue">
+                    <i class="fa-solid fa-lock"></i>
+                    <div>
+                      Login details are managed in Settings and kept on the
+                      backend. This page never needs to store your password.
+                      <div style="margin-top:6px;">
+                        <a href="settings.html" style="font-weight:700;text-decoration:underline;">Open portal settings</a>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="field full">
+                  <div class="notice">
+                    <i class="fa-solid fa-shield-halved"></i>
+                    <div>
+                      Scans update portal observations only. Student allocations
+                      and protected-space records must remain unchanged unless
+                      you edit them separately.
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="scan-actions">
+                <button type="submit" class="btn btn-gold" id="startScanButton" disabled>
+                  <i class="fa-solid fa-play"></i> Start Scan
+                </button>
+                <button type="button" class="btn btn-danger" id="cancelScanButton" disabled>
+                  <i class="fa-solid fa-stop"></i> Cancel Scan
+                </button>
+                <button type="button" class="btn btn-outline" id="clearLogsButton">
+                  <i class="fa-solid fa-eraser"></i> Clear Visible Logs
+                </button>
+              </div>
+            </form>
+          </div>
+        </article>
+
+        <!-- LIVE PROGRESS -->
+        <article class="panel">
+          <div class="panel-header">
+            <div>
+              <h2>Current Scan</h2>
+              <p class="panel-subtitle">Progress reported by the scanner backend.</p>
+            </div>
+            <span class="pill pill-neutral" id="scanStatusPill">
+              <i class="fa-solid fa-circle"></i> Idle
+            </span>
+          </div>
+
+          <div class="panel-body">
+            <div class="progress-summary">
+              <div>
+                <div class="muted">Locations processed</div>
+                <div class="progress-number" id="progressNumber">0 / 0</div>
+              </div>
+              <div style="text-align:right;">
+                <div class="muted">Progress</div>
+                <div class="progress-number" id="progressPercent">0%</div>
+              </div>
+            </div>
+
+            <div class="progress-track" role="progressbar"
+                 aria-label="Scan progress"
+                 aria-valuemin="0" aria-valuemax="100"
+                 aria-valuenow="0" id="progressBar">
+              <div class="progress-fill" id="progressFill"></div>
+            </div>
+
+            <div class="progress-meta">
+              <span id="progressStage">Waiting for a scan</span>
+              <span id="elapsedTime">Elapsed: —</span>
+            </div>
+
+            <div class="step-list" id="scanSteps">
+              <div class="step" data-step="connect">
+                <div class="step-icon"><i class="fa-solid fa-link"></i></div>
+                <div>
+                  <div class="step-title">Connect to portal</div>
+                  <div class="step-description">Waiting for scan to begin.</div>
+                </div>
+              </div>
+              <div class="step" data-step="login">
+                <div class="step-icon"><i class="fa-solid fa-lock"></i></div>
+                <div>
+                  <div class="step-title">Authenticate</div>
+                  <div class="step-description">Waiting for portal response.</div>
+                </div>
+              </div>
+              <div class="step" data-step="scan">
+                <div class="step-icon"><i class="fa-solid fa-building"></i></div>
+                <div>
+                  <div class="step-title">Inspect hostel locations</div>
+                  <div class="step-description">No locations processed yet.</div>
+                </div>
+              </div>
+              <div class="step" data-step="save">
+                <div class="step-icon"><i class="fa-solid fa-database"></i></div>
+                <div>
+                  <div class="step-title">Save scan results</div>
+                  <div class="step-description">Waiting for collected results.</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="notice blue" style="margin-top:17px;">
+              <i class="fa-solid fa-circle-info"></i>
+              <div id="progressNote">
+                Progress will update when the backend reports real scan events.
+              </div>
+            </div>
+          </div>
+        </article>
+
+      </section>
+
+      <!-- RESULTS METRICS -->
+      <section class="metric-grid" aria-label="Scan result summary">
+        <article class="metric">
+          <div class="metric-label">Rooms Checked</div>
+          <div class="metric-number" id="roomsChecked">—</div>
+          <div class="metric-note">Successfully inspected locations</div>
+        </article>
+        <article class="metric">
+          <div class="metric-label">Available Beds</div>
+          <div class="metric-number" id="bedsAvailable">—</div>
+          <div class="metric-note">Only when the portal exposes bed-level counts</div>
+        </article>
+        <article class="metric">
+          <div class="metric-label">Errors</div>
+          <div class="metric-number" id="errorCount">—</div>
+          <div class="metric-note">Failed or unreadable checks</div>
+        </article>
+        <article class="metric">
+          <div class="metric-label">Last Successful Scan</div>
+          <div class="metric-number" id="lastSuccessfulScan" style="font-size:15px;line-height:1.6;">—</div>
+          <div class="metric-note">Previous good snapshot retained on failure</div>
+        </article>
+      </section>
+
+      <!-- SCAN RESULTS -->
+      <section class="panel" style="margin-bottom:21px;">
+        <div class="panel-header">
+          <div>
+            <h2>Availability Results</h2>
+            <p class="panel-subtitle">
+              Results from the selected scan. These do not replace student or protected-space records.
+            </p>
+          </div>
+          <button class="btn btn-outline" id="exportButton" type="button" disabled>
+            <i class="fa-solid fa-file-excel"></i> Export Excel
+          </button>
+        </div>
+
+        <div class="results-toolbar">
+          <div class="filters">
+            <select class="filter-select" id="resultCampusFilter" aria-label="Filter campus">
+              <option value="all">All campuses</option>
+              <option value="Legacy">Legacy Campus</option>
+              <option value="Heritage">Heritage Campus</option>
+            </select>
+
+            <select class="filter-select" id="resultStatusFilter" aria-label="Filter result status">
+              <option value="all">All results</option>
+              <option value="available">Available</option>
+              <option value="unavailable">Unavailable</option>
+              <option value="unknown">Unknown</option>
+              <option value="error">Error</option>
+            </select>
+
+            <select class="filter-select" id="resultHostelFilter" aria-label="Filter hostel">
+              <option value="all">All hostels</option>
+            </select>
+          </div>
+
+          <label class="search">
+            <i class="fa-solid fa-magnifying-glass"></i>
+            <input id="resultSearch" type="search" placeholder="Search results..." aria-label="Search scan results">
+          </label>
+        </div>
+
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>Campus</th>
+                <th>Hostel</th>
+                <th>Floor / Flat</th>
+                <th>Room</th>
+                <th>Available Beds</th>
+                <th>Last Checked</th>
+                <th>Portal Result</th>
+                <th>View</th>
+              </tr>
+            </thead>
+            <tbody id="resultsBody"></tbody>
+          </table>
+
+          <div class="empty-state" id="resultsEmpty">
+            <i class="fa-solid fa-magnifying-glass"></i>
+            <strong>No scan results loaded</strong><br>
+            Start a scan or connect to the backend to display saved results.
+          </div>
+        </div>
+
+        <div class="table-footer">
+          <span id="resultsCount">0 results</span>
+          <span id="resultsTimestamp">No scan selected</span>
+        </div>
+      </section>
+
+      <!-- LIVE LOG -->
+      <section class="panel">
+        <div class="panel-header">
+          <div>
+            <h2>Scanner Activity Log</h2>
+            <p class="panel-subtitle">Diagnostic messages reported by the backend.</p>
+          </div>
+          <span class="pill pill-neutral" id="logCount">0 messages</span>
+        </div>
+
+        <div class="log-list" id="logList">
+          <div class="empty-state">
+            <i class="fa-solid fa-terminal"></i>
+            No scanner messages yet.
+          </div>
+        </div>
+      </section>
+
+      <footer class="footer">
+        <span>Hostel Space Finder · Private workspace</span>
+        <span id="dataMode">Backend not connected</span>
+      </footer>
+
+    </div>
+  </main>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+"use strict";
+
+/*
+  API CONTRACT
+
+  GET    /api/hostels
+  POST   /api/scans
+  GET    /api/scans/:id
+  GET    /api/scans/:id/results
+  POST   /api/scans/:id/cancel
+  GET    /api/reports/scans/:id.xlsx
+
+  Expected POST /api/scans request:
+  {
+    "scope": "all" | "campus" | "hostel",
+    "campus": "Legacy",
+    "hostelId": "hostel-id",
+    "mode": "full" | "retry_failed"
+  }
+
+  Expected POST /api/scans response:
+  {
+    "id": "scan-id",
+    "status": "running"
+  }
+
+  Expected GET /api/scans/:id response:
+  {
+    "id": "scan-id",
+    "status": "running",
+    "stage": "scan",
+    "processed": 4,
+    "total": 20,
+    "roomsChecked": 4,
+    "availableBeds": null,
+    "errors": 0,
+    "startedAt": "ISO timestamp",
+    "message": "Checking hostel rooms"
+  }
+
+  Expected result object:
+  {
+    "campus": "Legacy",
+    "hostel": "Above Only",
+    "floorFlat": "Flat 1",
+    "room": "Room 1",
+    "availableBeds": null,
+    "checkedAt": "ISO timestamp",
+    "status": "available"
+  }
+
+  Adapt these names to your actual backend.
+*/
+
+const API_BASE = "/api";
+const POLL_INTERVAL_MS = 2000;
+
+const state = {
+  connected: false,
+  activeScanId: null,
+  activeScan: null,
+  scanResults: [],
+  logs: [],
+  hostels: [],
+  pollTimer: null,
+  scanStartedAt: null,
+  elapsedTimer: null,
+  elapsedInterval: null,
+  cancelling: false
+};
+
+const $ = (selector) => document.querySelector(selector);
+
+function escapeHTML(value) {
+  return String(value ?? "").replace(/[&<>"']/g, character => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#039;"
+  })[character]);
+}
+
+function formatNumber(value) {
+  if (value === null || value === undefined || value === "") return "—";
+  const n = Number(value);
+  return Number.isFinite(n) ? new Intl.NumberFormat().format(n) : "—";
+}
+
+function formatDate(value) {
+  if (!value) return "—";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "—";
+
+  return new Intl.DateTimeFormat(undefined, {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit"
+  }).format(date);
+}
+
+function showToast(message) {
+  const toast = $("#toast");
+  toast.textContent = message;
+  toast.classList.add("show");
+
+  clearTimeout(showToast.timer);
+  showToast.timer = setTimeout(() => toast.classList.remove("show"), 3500);
+}
+
+async function apiRequest(path, options = {}) {
+  const response = await fetch(`${API_BASE}${path}`, {
+    ...options,
+    headers: {
+      "Accept": "application/json",
+      ...(options.body ? { "Content-Type": "application/json" } : {}),
+      ...options.headers
+    },
+    cache: "no-store"
+  });
+
+  if (!response.ok) {
+    const message = await response.text().catch(() => "");
+    throw new Error(message || `Request failed (${response.status})`);
+  }
+
+  if (response.status === 204) return null;
+
+  const contentType = response.headers.get("content-type") || "";
+  return contentType.includes("application/json")
+    ? response.json()
+    : response;
+}
+
+function setPill(element, label, status = "neutral") {
+  const classes = {
+    neutral: "pill-neutral",
+    success: "pill-green",
+    warning: "pill-orange",
+    danger: "pill-red",
+    info: "pill-blue"
+  };
+
+  element.className = `pill ${classes[status] || classes.neutral}`;
+  element.innerHTML = `<i class="fa-solid fa-circle"></i> ${escapeHTML(label)}`;
+}
+
+function statusStyle(status) {
+  const styles = {
+    available: ["Available", "pill-green"],
+    unavailable: ["Unavailable", "pill-neutral"],
+    unknown: ["Unknown", "pill-orange"],
+    error: ["Error", "pill-red"],
+    completed: ["Completed", "pill-green"],
+    partial: ["Partial", "pill-orange"],
+    failed: ["Failed", "pill-red"],
+    running: ["Running", "pill-blue"],
+    pending: ["Pending", "pill-neutral"],
+    cancelled: ["Cancelled", "pill-neutral"]
+  };
+  return styles[String(status || "unknown").toLowerCase()] || styles.unknown;
+}
+
+function renderStatus(status) {
+  const [label, className] = statusStyle(status);
+  return `<span class="pill ${className}"><i class="fa-solid fa-circle"></i>${label}</span>`;
+}
+
+function setButtons({ running = false, ready = state.connected } = {}) {
+  $("#startScanButton").disabled = !ready || running;
+  $("#cancelScanButton").disabled = !running || !state.activeScanId;
+  $("#scannerReadyPill").innerHTML = running
+    ? '<i class="fa-solid fa-circle"></i> Scan running'
+    : ready
+      ? '<i class="fa-solid fa-circle"></i> Backend ready'
+      : '<i class="fa-solid fa-circle"></i> Backend unavailable';
+  $("#scannerReadyPill").className = `pill ${
+    running ? "pill-blue" : ready ? "pill-green" : "pill-orange"
+  }`;
+}
+
+function selectedScope() {
+  return document.querySelector('input[name="scope"]:checked')?.value || "all";
+}
+
+function updateSelectionAvailability() {
+  const scope = selectedScope();
+  $("#campus").disabled = scope === "all";
+  $("#hostel").disabled = scope !== "hostel";
+
+  if (scope === "all") {
+    $("#campus").value = "";
+    $("#hostel").value = "";
+  } else if (scope === "campus") {
+    $("#hostel").value = "";
+  }
+}
+
+function renderHostelOptions() {
+  const campusSelect = $("#campus");
+  const hostelSelect = $("#hostel");
+  const filterSelect = $("#resultHostelFilter");
+
+  const campuses = [...new Set(state.hostels.map(item => item.campus).filter(Boolean))];
+
+  campusSelect.innerHTML =
+    '<option value="">Choose a campus</option>' +
+    campuses.map(campus =>
+      `<option value="${escapeHTML(campus)}">${escapeHTML(campus)} Campus</option>`
+    ).join("");
+
+  hostelSelect.innerHTML = '<option value="">Choose a hostel</option>';
+  filterSelect.innerHTML = '<option value="all">All hostels</option>';
+
+  state.hostels.forEach(hostel => {
+    const option = document.createElement("option");
+    option.value = String(hostel.id);
+    option.textContent = hostel.name;
+    option.dataset.campus = hostel.campus || "";
+    hostelSelect.appendChild(option);
+
+    const filterOption = document.createElement("option");
+    filterOption.value = hostel.name;
+    filterOption.textContent = hostel.name;
+    filterSelect.appendChild(filterOption);
+  });
+
+  updateSelectionAvailability();
+}
+
+function filterHostelOptions() {
+  const campus = $("#campus").value;
+  const hostelSelect = $("#hostel");
+  const previousValue = hostelSelect.value;
+
+  hostelSelect.innerHTML = '<option value="">Choose a hostel</option>';
+
+  state.hostels
+    .filter(hostel => !campus || hostel.campus === campus)
+    .forEach(hostel => {
+      const option = document.createElement("option");
+      option.value = String(hostel.id);
+      option.textContent = hostel.name;
+      hostelSelect.appendChild(option);
+    });
+
+  if ([...hostelSelect.options].some(option => option.value === previousValue)) {
+    hostelSelect.value = previousValue;
+  }
+}
+
+function addLog(message, type = "info", timestamp = new Date()) {
+  state.logs.push({
+    message: String(message || ""),
+    type,
+    timestamp
+  });
+
+  if (state.logs.length > 250) state.logs.shift();
+  renderLogs();
+}
+
+function renderLogs() {
+  const container = $("#logList");
+  $("#logCount").textContent = `${state.logs.length} messages`;
+
+  if (!state.logs.length) {
+    container.innerHTML = `
+      <div class="empty-state">
+        <i class="fa-solid fa-terminal"></i>No scanner messages yet.
+      </div>`;
+    return;
+  }
+
+  container.innerHTML = state.logs.slice().reverse().map(log => `
+    <div class="log-entry">
+      <span class="log-time">${escapeHTML(
+        new Intl.DateTimeFormat(undefined, {
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit"
+        }).format(new Date(log.timestamp))
+      )}</span>
+      <span class="log-message ${log.type === "error" ? "error" : log.type === "success" ? "success" : ""}">
+        ${escapeHTML(log.message)}
+      </span>
+    </div>
+  `).join("");
+}
+
+function renderSteps(stage) {
+  const order = ["connect", "login", "scan", "save"];
+  const currentIndex = order.indexOf(stage);
+
+  document.querySelectorAll(".step").forEach((step, index) => {
+    step.classList.remove("done", "current");
+
+    if (currentIndex >= 0 && index < currentIndex) step.classList.add("done");
+    if (currentIndex === index) step.classList.add("current");
+
+    if (step.classList.contains("done")) {
+      step.querySelector(".step-icon").innerHTML =
+        '<i class="fa-solid fa-check"></i>';
+    }
+  });
+}
+
+function resetSteps() {
+  document.querySelectorAll(".step").forEach(step => {
+    step.classList.remove("done", "current");
+    const icon = step.querySelector(".step-icon");
+    const icons = {
+      connect: "fa-link",
+      login: "fa-lock",
+      scan: "fa-building",
+      save: "fa-database"
+    };
+    icon.innerHTML = `<i class="fa-solid ${icons[step.dataset.step]}"></i>`;
+  });
+}
+
+function renderProgress(scan) {
+  if (!scan) return;
+
+  const processed = Math.max(0, Number(scan.processed) || 0);
+  const total = Math.max(0, Number(scan.total) || 0);
+  const percent = total > 0
+    ? Math.min(100, Math.round(processed / total * 100))
+    : 0;
+
+  $("#progressNumber").textContent = `${processed} / ${total || "—"}`;
+  $("#progressPercent").textContent = `${percent}%`;
+  $("#progressFill").style.width = `${percent}%`;
+  $("#progressBar").setAttribute("aria-valuenow", String(percent));
+  $("#progressStage").textContent = scan.message || scan.stage || "Processing";
+  $("#progressNote").textContent = scan.message || "Waiting for scanner updates.";
+
+  const status = String(scan.status || "unknown").toLowerCase();
+  const statusMap = {
+    running: ["Running", "info"],
+    completed: ["Completed", "success"],
+    failed: ["Failed", "danger"],
+    partial: ["Partial", "warning"],
+    cancelled: ["Cancelled", "neutral"]
+  };
+  const [label, style] = statusMap[status] || ["Unknown", "neutral"];
+
+  setPill($("#scanStatusPill"), label, style);
+
+  renderSteps(scan.stage);
+
+  $("#roomsChecked").textContent = formatNumber(scan.roomsChecked);
+  $("#bedsAvailable").textContent = formatNumber(scan.availableBeds);
+  $("#errorCount").textContent = formatNumber(scan.errors);
+
+  setText("#lastSuccessfulScan", formatDate(scan.lastSuccessfulAt));
+
+  const running = status === "running";
+  setButtons({ running, ready: state.connected });
+
+  if (!running && state.scanStartedAt) {
+    clearInterval(state.elapsedInterval);
+    state.elapsedInterval = null;
+    $("#elapsedTime").textContent = `Duration: ${formatDuration(scan.durationSeconds)}`;
+  }
+}
+
+function setText(selector, value) {
+  const element = $(selector);
+  if (element) element.textContent = value;
+}
+
+function formatDuration(seconds) {
+  if (seconds === null || seconds === undefined || !Number.isFinite(Number(seconds))) {
+    return "—";
+  }
+
+  const total = Math.max(0, Math.floor(Number(seconds)));
+  const minutes = Math.floor(total / 60);
+  const remaining = total % 60;
+
+  return minutes ? `${minutes}m ${remaining}s` : `${remaining}s`;
+}
+
+function renderResults(results) {
+  state.scanResults = Array.isArray(results) ? results : [];
+  filterResults();
+}
+
+function filterResults() {
+  const campus = $("#resultCampusFilter").value;
+  const status = $("#resultStatusFilter").value;
+  const hostel = $("#resultHostelFilter").value;
+  const query = $("#resultSearch").value.trim().toLowerCase();
+
+  const filtered = state.scanResults.filter(result => {
+    const matchesCampus = campus === "all" || result.campus === campus;
+    const matchesStatus = status === "all" ||
+      String(result.status || "unknown").toLowerCase() === status;
+    const matchesHostel = hostel === "all" || result.hostel === hostel;
+
+    const searchable = [
+      result.campus,
+      result.hostel,
+      result.floorFlat,
+      result.room
+    ].join(" ").toLowerCase();
+
+    return matchesCampus && matchesStatus && matchesHostel &&
+      searchable.includes(query);
+  });
+
+  $("#resultsBody").innerHTML = filtered.map(result => `
+    <tr>
+      <td class="cell-main">${escapeHTML(result.campus || "—")}</td>
+      <td class="cell-main">${escapeHTML(result.hostel || "—")}</td>
+      <td>${escapeHTML(result.floorFlat || "—")}</td>
+      <td>${escapeHTML(result.room || "—")}</td>
+      <td>${formatNumber(result.availableBeds)}</td>
+      <td>${escapeHTML(formatDate(result.checkedAt))}</td>
+      <td>${renderStatus(result.status)}</td>
+      <td>
+        <button class="table-action"
+                type="button"
+                data-result-id="${escapeHTML(result.id || "")}"
+                aria-label="View result details">
+          <i class="fa-solid fa-arrow-up-right-from-square"></i>
+        </button>
+      </td>
+    </tr>
+  `).join("");
+
+  $("#resultsEmpty").style.display = filtered.length ? "none" : "block";
+  $("#resultsCount").textContent =
+    `${filtered.length} result${filtered.length === 1 ? "" : "s"}`;
+}
+
+async function loadHostels() {
+  try {
+    const data = await apiRequest("/hostels");
+    state.hostels = Array.isArray(data) ? data : (data.hostels || []);
+    renderHostelOptions();
+  } catch (error) {
+    $("#campus").innerHTML = '<option value="">Backend unavailable</option>';
+    $("#hostel").innerHTML = '<option value="">Backend unavailable</option>';
+    addLog("Could not load hostel configuration: " + error.message, "error");
+  }
+}
+
+async function loadBackendStatus() {
+  try {
+    // The dashboard endpoint is used here as the connection test.
+    const data = await apiRequest("/dashboard");
+    state.connected = true;
+    setText("#connectionText", "Backend connection is available.");
+    setText("#dataMode", "Connected to backend");
+    setButtons({ running: Boolean(state.activeScanId), ready: true });
+
+    if (data.lastScan) {
+      $("#lastSuccessfulScan").textContent =
+        formatDate(data.lastScan.finishedAt || data.lastScan.completedAt);
+    }
+
+    setPill($("#scannerReadyPill"), "Backend ready", "success");
+  } catch (error) {
+    state.connected = false;
+    setText("#connectionText", "Backend not connected. Scan controls are disabled.");
+    setText("#dataMode", "Backend not connected");
+    setButtons({ running: false, ready: false });
+    setPill($("#scannerReadyPill"), "Backend unavailable", "warning");
+  }
+}
+
+async function startScan(event) {
+  event.preventDefault();
+
+  if (!state.connected) {
+    showToast("Connect the backend before starting a scan.");
+    return;
+  }
+
+  if (state.activeScanId) {
+    showToast("A scan is already being tracked.");
+    return;
+  }
+
+  const scope = selectedScope();
+  const campus = $("#campus").value;
+  const hostelId = $("#hostel").value;
+
+  if ((scope === "campus" || scope === "hostel") && !campus) {
+    showToast("Choose a campus first.");
+    return;
+  }
+
+  if (scope === "hostel" && !hostelId) {
+    showToast("Choose a hostel for this scan.");
+    return;
+  }
+
+  const payload = {
+    scope,
+    campus: scope === "all" ? null : campus,
+    hostelId: scope === "hostel" ? hostelId : null,
+    mode: $("#scanMode").value
+  };
+
+  $("#startScanButton").disabled = true;
+
+  try {
+    const response = await apiRequest("/scans", {
+      method: "POST",
+      body: JSON.stringify(payload)
+    });
+
+    if (!response || !response.id) {
+      throw new Error("Backend did not return a scan ID.");
+    }
+
+    state.activeScanId = String(response.id);
+    state.activeScan = response;
+    state.scanStartedAt = Date.now();
+    state.cancelling = false;
+
+    state.scanResults = [];
+    $("#resultsBody").innerHTML = "";
+    $("#resultsEmpty").style.display = "block";
+    $("#resultsTimestamp").textContent = "Scan running";
+    $("#progressNumber").textContent = "0 / —";
+    $("#progressPercent").textContent = "0%";
+    $("#progressFill").style.width = "0%";
+    $("#elapsedTime").textContent = "Elapsed: 0s";
+    $("#exportButton").disabled = true;
+
+    resetSteps();
+    renderProgress({ ...response, status: "running" });
+    addLog(`Scan ${state.activeScanId} started.`, "success");
+    startElapsedTimer();
+    beginPolling();
+
+  } catch (error) {
+    addLog("Unable to start scan: " + error.message, "error");
+    showToast("The scan could not be started.");
+    $("#startScanButton").disabled = false;
+  }
+}
+
+function startElapsedTimer() {
+  clearInterval(state.elapsedInterval);
+
+  state.elapsedInterval = setInterval(() => {
+    if (!state.scanStartedAt) return;
+
+    const seconds = Math.floor((Date.now() - state.scanStartedAt) / 1000);
+    $("#elapsedTime").textContent = `Elapsed: ${formatDuration(seconds)}`;
+  }, 1000);
+}
+
+function beginPolling() {
+  clearInterval(state.pollTimer);
+  pollScan();
+  state.pollTimer = setInterval(pollScan, POLL_INTERVAL_MS);
+}
+
+async function pollScan() {
+  if (!state.activeScanId) return;
+
+  try {
+    const scan = await apiRequest(
+      `/scans/${encodeURIComponent(state.activeScanId)}`
+    );
+
+    state.activeScan = scan;
+    renderProgress(scan);
+
+    // If your backend includes new messages in each response,
+    // it may provide logs as an array. Only append explicit messages.
+    if (Array.isArray(scan.logs)) {
+      scan.logs.forEach(log => {
+        if (log.message) addLog(log.message, log.type || "info");
+      });
+    }
+
+    const status = String(scan.status || "").toLowerCase();
+
+    if (["completed", "partial", "failed", "cancelled"].includes(status)) {
+      clearInterval(state.pollTimer);
+      state.pollTimer = null;
+      clearInterval(state.elapsedInterval);
+      state.elapsedInterval = null;
+
+      addLog(`Scan ${state.activeScanId} finished with status: ${status}.`,
+        status === "completed" ? "success" : status === "failed" ? "error" : "info");
+
+      await loadScanResults(state.activeScanId);
+      state.activeScanId = null;
+      state.cancelling = false;
+      setButtons({ running: false, ready: state.connected });
+
+      if (status === "completed") {
+        showToast("Scan completed. Results have been loaded.");
+      } else if (status === "failed") {
+        showToast("Scan failed. Previous successful results should be retained.");
+      } else {
+        showToast(`Scan finished: ${status}.`);
+      }
+    }
+
+  } catch (error) {
+    addLog("Unable to refresh scan status: " + error.message, "error");
+
+    // Stop polling after a transient API failure? No.
+    // Continue polling so a brief connection issue doesn't abandon the run.
+  }
+}
+
+async function loadScanResults(scanId) {
+  try {
+    const data = await apiRequest(
+      `/scans/${encodeURIComponent(scanId)}/results`
+    );
+
+    const results = Array.isArray(data) ? data : (data.results || []);
+    renderResults(results);
+
+    $("#resultsTimestamp").textContent =
+      `Scan ${scanId} · ${formatDate(data.finishedAt || state.activeScan?.finishedAt)}`;
+
+    $("#exportButton").disabled = results.length === 0;
+  } catch (error) {
+    addLog("Unable to load results: " + error.message, "error");
+    $("#resultsTimestamp").textContent = "Could not load scan results";
+  }
+}
+
+async function cancelScan() {
+  if (!state.activeScanId || state.cancelling) return;
+
+  const confirmed = window.confirm(
+    "Request cancellation of the running scan? Results already saved may be retained."
+  );
+
+  if (!confirmed) return;
+
+  state.cancelling = true;
+  $("#cancelScanButton").disabled = true;
+
+  try {
+    await apiRequest(
+      `/scans/${encodeURIComponent(state.activeScanId)}/cancel`,
+      { method: "POST", body: JSON.stringify({}) }
+    );
+
+    addLog("Cancellation requested. Waiting for backend confirmation.", "info");
+    showToast("Cancellation requested.");
+
+  } catch (error) {
+    state.cancelling = false;
+    $("#cancelScanButton").disabled = false;
+    addLog("Could not cancel scan: " + error.message, "error");
+    showToast("The backend could not cancel the scan.");
+  }
+}
+
+async function exportResults() {
+  if (!state.activeScan?.id && !state.scanResults.length) {
+    showToast("There are no results to export.");
+    return;
+  }
+
+  if (!state.activeScanId && !state.activeScan?.id) {
+    showToast("The backend must provide the scan ID for Excel export.");
+    return;
+  }
+
+  const id = state.activeScan?.id || state.activeScanId;
+
+  try {
+    const response = await fetch(
+      `${API_BASE}/reports/scans/${encodeURIComponent(id)}.xlsx`,
+      { cache: "no-store" }
+    );
+
+    if (!response.ok) {
+      throw new Error(`Export failed (${response.status})`);
+    }
+
+    const blob = await response.blob();
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `hostel-scan-${id}.xlsx`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+
+    showToast("Excel export downloaded.");
+  } catch (error) {
+    addLog("Excel export failed: " + error.message, "error");
+    showToast("Export is not available until the backend endpoint is implemented.");
+  }
+}
+
+// Mobile sidebar
+const sidebar = $("#sidebar");
+const overlay = $("#overlay");
+const menuToggle = $("#menuToggle");
+
+function closeMenu() {
+  sidebar.classList.remove("open");
+  overlay.classList.remove("open");
+  menuToggle.setAttribute("aria-expanded", "false");
+}
+
+menuToggle.addEventListener("click", () => {
+  const isOpen = sidebar.classList.toggle("open");
+  overlay.classList.toggle("open", isOpen);
+  menuToggle.setAttribute("aria-expanded", String(isOpen));
+});
+
+overlay.addEventListener("click", closeMenu);
+sidebar.querySelectorAll("a").forEach(link => link.addEventListener("click", closeMenu));
+
+// Event listeners
+document.querySelectorAll('input[name="scope"]').forEach(input => {
+  input.addEventListener("change", updateSelectionAvailability);
+});
+
+$("#campus").addEventListener("change", filterHostelOptions);
+$("#scanForm").addEventListener("submit", startScan);
+$("#cancelScanButton").addEventListener("click", cancelScan);
+$("#refreshButton").addEventListener("click", async () => {
+  await loadBackendStatus();
+  await loadHostels();
+
+  if (state.activeScanId) {
+    await pollScan();
+  }
+
+  showToast("Scan status refreshed.");
+});
+
+$("#clearLogsButton").addEventListener("click", () => {
+  state.logs = [];
+  renderLogs();
+  showToast("Visible logs cleared. Saved backend logs are unchanged.");
+});
+
+$("#resultCampusFilter").addEventListener("change", filterResults);
+$("#resultStatusFilter").addEventListener("change", filterResults);
+$("#resultHostelFilter").addEventListener("change", filterResults);
+$("#resultSearch").addEventListener("input", filterResults);
+$("#exportButton").addEventListener("click", exportResults);
+
+// Initial setup
+setText("#currentDate", new Intl.DateTimeFormat(undefined, {
+  weekday: "short",
+  day: "numeric",
+  month: "short",
+  year: "numeric"
+}).format(new Date()));
+
+updateSelectionAvailability();
+renderLogs();
+renderResults([]);
+loadBackendStatus();
+loadHostels();
+</script>
+</body>
+</html>

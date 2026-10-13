@@ -1,0 +1,1801 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#10233f">
+  <title>BedCheck · Scan History</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Merriweather:wght@700;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
+
+  <style>
+    :root {
+      --navy: #10233f;
+      --navy-light: #1b3558;
+      --gold: #d6ad4b;
+      --paper: #f5f1e8;
+      --white: #fffefa;
+      --ink: #19283b;
+      --muted: #778294;
+      --line: #e6e0d5;
+      --green: #267653;
+      --green-bg: #e7f5ec;
+      --red: #b94343;
+      --red-bg: #fbeaea;
+      --blue: #3466a5;
+      --blue-bg: #eaf1fb;
+      --orange: #99661b;
+      --orange-bg: #fbf0d8;
+      --shadow: 0 10px 30px rgba(16, 35, 63, .055);
+      --radius: 15px;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: var(--paper);
+      color: var(--ink);
+      font-family: Inter, sans-serif;
+      font-size: 13px;
+    }
+
+    button, input, select { font: inherit; }
+    button { cursor: pointer; }
+    button:disabled { opacity: .5; cursor: not-allowed; }
+
+    .app { min-height: 100vh; }
+
+    .sidebar {
+      position: fixed;
+      inset: 0 auto 0 0;
+      z-index: 20;
+      width: 245px;
+      padding: 25px 16px;
+      background: var(--navy);
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+      transition: transform .25s ease;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 0 10px 28px;
+      border-bottom: 1px solid rgba(255,255,255,.12);
+    }
+
+    .brand-mark {
+      width: 41px;
+      height: 41px;
+      display: grid;
+      place-items: center;
+      background: var(--gold);
+      color: var(--navy);
+      border-radius: 12px;
+      font-size: 19px;
+    }
+
+    .brand-name {
+      font-family: Merriweather, serif;
+      font-size: 15px;
+      font-weight: 900;
+    }
+
+    .brand-sub {
+      margin-top: 5px;
+      color: #aebdd0;
+      font-size: 10px;
+    }
+
+    .nav-label {
+      margin: 26px 10px 10px;
+      color: #94a6bd;
+      font-size: 9px;
+      letter-spacing: 1.6px;
+      font-weight: 700;
+    }
+
+    .nav-link {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin: 3px 0;
+      padding: 12px 13px;
+      border-radius: 9px;
+      color: #c9d3df;
+      text-decoration: none;
+      font-size: 12px;
+      transition: .2s;
+    }
+
+    .nav-link i { width: 17px; text-align: center; }
+    .nav-link:hover { background: rgba(255,255,255,.07); color: white; }
+    .nav-link.active {
+      background: rgba(214,173,75,.15);
+      color: #f2d58c;
+      box-shadow: inset 3px 0 var(--gold);
+    }
+
+    .sidebar-bottom {
+      margin-top: auto;
+      padding: 18px 10px 0;
+      color: #aebdd0;
+      font-size: 10px;
+      line-height: 1.8;
+    }
+
+    .sidebar-bottom strong { color: #fff; }
+
+    .main {
+      min-height: 100vh;
+      margin-left: 245px;
+    }
+
+    .topbar {
+      height: 72px;
+      padding: 0 32px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      background: var(--white);
+      border-bottom: 1px solid var(--line);
+    }
+
+    .topbar-left, .topbar-right, .page-actions, .filter-actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .menu-toggle {
+      display: none;
+      width: 36px;
+      height: 36px;
+      border: 1px solid var(--line);
+      border-radius: 9px;
+      background: white;
+      color: var(--navy);
+    }
+
+    .crumb { color: var(--muted); font-size: 11px; }
+    .crumb strong { color: var(--navy); }
+
+    .connection {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      padding: 8px 10px;
+      border: 1px solid var(--line);
+      border-radius: 30px;
+      color: var(--muted);
+      font-size: 10px;
+      white-space: nowrap;
+    }
+
+    .connection-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #a2aab5;
+    }
+
+    .connection.online .connection-dot { background: #30956a; }
+    .connection.offline .connection-dot { background: var(--red); }
+
+    .top-date { color: var(--muted); font-size: 11px; }
+
+    .content {
+      width: 100%;
+      max-width: 1600px;
+      margin: 0 auto;
+      padding: 30px 32px 42px;
+    }
+
+    .page-heading {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 20px;
+      margin-bottom: 24px;
+    }
+
+    .eyebrow {
+      margin-bottom: 8px;
+      color: #9a7629;
+      font-size: 9px;
+      letter-spacing: 2px;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      margin: 0;
+      color: var(--navy);
+      font-family: Merriweather, serif;
+      font-size: clamp(22px, 2.4vw, 29px);
+      letter-spacing: -.7px;
+    }
+
+    .subtitle {
+      max-width: 620px;
+      margin: 10px 0 0;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.7;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      min-height: 38px;
+      padding: 0 14px;
+      border: 1px solid var(--line);
+      border-radius: 9px;
+      background: white;
+      color: var(--navy);
+      font-weight: 600;
+      font-size: 11px;
+      white-space: nowrap;
+      transition: .2s;
+    }
+
+    .btn:hover:not(:disabled) { border-color: #c7b47f; transform: translateY(-1px); }
+    .btn-primary { background: var(--navy); color: white; border-color: var(--navy); }
+    .btn-primary:hover:not(:disabled) { background: var(--navy-light); }
+    .btn-gold { background: var(--gold); border-color: var(--gold); color: var(--navy); }
+    .btn-danger { color: var(--red); border-color: #efcaca; }
+    .btn-small { min-height: 30px; padding: 0 10px; font-size: 10px; }
+    .icon-btn { width: 32px; height: 32px; padding: 0; }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 15px;
+      margin-bottom: 23px;
+    }
+
+    .stat-card {
+      min-width: 0;
+      padding: 19px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--white);
+      box-shadow: var(--shadow);
+    }
+
+    .stat-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .stat-label { color: var(--muted); font-size: 10px; font-weight: 600; }
+
+    .stat-icon {
+      width: 35px;
+      height: 35px;
+      display: grid;
+      place-items: center;
+      border-radius: 10px;
+      background: #f1ecdf;
+      color: #9a7629;
+      font-size: 14px;
+    }
+
+    .stat-number {
+      margin-top: 13px;
+      color: var(--navy);
+      font-size: 28px;
+      font-weight: 700;
+      letter-spacing: -1px;
+    }
+
+    .stat-foot { margin-top: 6px; color: var(--muted); font-size: 10px; line-height: 1.6; }
+
+    .panel {
+      min-width: 0;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--white);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .panel-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 14px;
+      padding: 19px 21px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .panel-title {
+      margin: 0;
+      color: var(--navy);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .panel-description { margin-top: 5px; color: var(--muted); font-size: 10px; line-height: 1.6; }
+
+    .filters {
+      display: grid;
+      grid-template-columns: minmax(180px, 1.7fr) repeat(3, minmax(120px, 1fr)) auto;
+      align-items: end;
+      gap: 12px;
+      padding: 17px 21px;
+      border-bottom: 1px solid var(--line);
+      background: #fffdf8;
+    }
+
+    .field { min-width: 0; }
+    .field label {
+      display: block;
+      margin-bottom: 7px;
+      color: #586477;
+      font-size: 10px;
+      font-weight: 600;
+    }
+
+    .control {
+      width: 100%;
+      height: 38px;
+      min-width: 0;
+      padding: 0 11px;
+      border: 1px solid #e3ded3;
+      border-radius: 8px;
+      outline: none;
+      background: white;
+      color: var(--ink);
+      font-size: 11px;
+    }
+
+    .control:focus { border-color: var(--gold); box-shadow: 0 0 0 3px rgba(214,173,75,.12); }
+
+    .search-wrap { position: relative; }
+    .search-wrap i { position: absolute; left: 12px; top: 13px; color: #9ba3af; }
+    .search-wrap input { padding-left: 34px; }
+
+    .filter-actions { justify-content: flex-end; }
+
+    .selection-bar {
+      display: none;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 12px 21px;
+      background: #f0f4fa;
+      border-bottom: 1px solid #dce5f1;
+    }
+
+    .selection-bar.show { display: flex; }
+    .selection-label { color: var(--navy); font-size: 11px; font-weight: 600; }
+    .selection-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+
+    .table-wrap { width: 100%; overflow-x: auto; }
+
+    table { width: 100%; border-collapse: collapse; white-space: nowrap; }
+    th {
+      padding: 13px 15px;
+      background: #f8f5ee;
+      color: #778294;
+      text-align: left;
+      text-transform: uppercase;
+      letter-spacing: .6px;
+      font-size: 9px;
+      font-weight: 700;
+    }
+
+    td {
+      padding: 15px;
+      border-bottom: 1px solid #eee9df;
+      color: #3b4859;
+      font-size: 11px;
+      vertical-align: middle;
+    }
+
+    tbody tr:hover { background: #fffdf8; }
+    tbody tr:last-child td { border-bottom: 0; }
+
+    .scan-id { color: var(--navy); font-weight: 700; }
+    .scan-sub { margin-top: 5px; color: var(--muted); font-size: 9px; }
+    .scope-name { color: var(--navy); font-weight: 600; }
+    .muted { color: var(--muted); }
+    .num { font-variant-numeric: tabular-nums; font-weight: 600; }
+    .good { color: var(--green); }
+    .bad { color: var(--red); }
+
+    .status {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 9px;
+      border-radius: 30px;
+      font-size: 9px;
+      font-weight: 700;
+    }
+
+    .status::before {
+      content: "";
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: currentColor;
+    }
+
+    .status.success { color: var(--green); background: var(--green-bg); }
+    .status.failed { color: var(--red); background: var(--red-bg); }
+    .status.cancelled { color: #647084; background: #edf0f4; }
+    .status.running { color: var(--blue); background: var(--blue-bg); }
+    .status.partial { color: var(--orange); background: var(--orange-bg); }
+
+    .row-actions { display: flex; align-items: center; gap: 6px; }
+
+    .empty {
+      padding: 55px 20px;
+      text-align: center;
+      color: var(--muted);
+    }
+
+    .empty i { display: block; margin-bottom: 13px; color: #c3bba9; font-size: 28px; }
+    .empty strong { display: block; margin-bottom: 7px; color: var(--navy); font-size: 13px; }
+    .empty p { margin: 0; font-size: 11px; line-height: 1.7; }
+
+    .table-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 14px;
+      padding: 15px 20px;
+      border-top: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 10px;
+    }
+
+    .pagination { display: flex; align-items: center; gap: 7px; }
+    .page-number { color: var(--navy); font-weight: 700; }
+
+    .note-panel {
+      display: flex;
+      gap: 13px;
+      align-items: flex-start;
+      margin-top: 19px;
+      padding: 16px 18px;
+      border: 1px solid #e8dcb9;
+      border-radius: 12px;
+      background: #fbf5e5;
+      color: #725c2c;
+    }
+
+    .note-panel > i { margin-top: 2px; font-size: 16px; }
+    .note-panel strong { display: block; margin-bottom: 5px; font-size: 11px; }
+    .note-panel p { margin: 0; font-size: 10px; line-height: 1.8; }
+
+    /* Modal */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 50;
+      display: none;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+      background: rgba(9, 23, 42, .56);
+      backdrop-filter: blur(3px);
+    }
+
+    .modal-backdrop.open { display: flex; }
+
+    .modal {
+      width: 100%;
+      max-width: 880px;
+      max-height: 90vh;
+      overflow: auto;
+      border-radius: 16px;
+      background: var(--white);
+      box-shadow: 0 25px 80px rgba(0,0,0,.2);
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 15px;
+      padding: 22px 24px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .modal-header h2 {
+      margin: 0;
+      color: var(--navy);
+      font-family: Merriweather, serif;
+      font-size: 18px;
+    }
+
+    .modal-header p { margin: 8px 0 0; color: var(--muted); font-size: 10px; line-height: 1.7; }
+    .modal-body { padding: 23px 24px; }
+
+    .detail-stats {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+
+    .detail-stat {
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: #fffdf8;
+    }
+
+    .detail-stat span { display: block; color: var(--muted); font-size: 9px; }
+    .detail-stat strong { display: block; margin-top: 9px; color: var(--navy); font-size: 20px; }
+
+    .detail-section-title {
+      margin: 22px 0 12px;
+      color: var(--navy);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .detail-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .detail-item { padding: 12px; border-radius: 9px; background: #f8f5ee; min-width: 0; }
+    .detail-item span { display: block; margin-bottom: 7px; color: var(--muted); font-size: 9px; }
+    .detail-item strong { overflow-wrap: anywhere; color: var(--navy); font-size: 11px; }
+
+    .modal-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      padding: 16px 24px;
+      border-top: 1px solid var(--line);
+      background: #fffdf8;
+    }
+
+    .modal-footer .right { display: flex; flex-wrap: wrap; gap: 8px; }
+
+    .toast {
+      position: fixed;
+      right: 24px;
+      bottom: 24px;
+      z-index: 100;
+      max-width: min(400px, calc(100vw - 32px));
+      padding: 13px 17px;
+      border-radius: 10px;
+      background: var(--navy);
+      color: white;
+      box-shadow: 0 10px 30px rgba(0,0,0,.18);
+      font-size: 11px;
+      line-height: 1.6;
+      opacity: 0;
+      pointer-events: none;
+      transform: translateY(10px);
+      transition: .2s;
+    }
+
+    .toast.show { opacity: 1; transform: translateY(0); }
+    .toast.error { background: #8d3030; }
+
+    .loading-row { padding: 35px; text-align: center; color: var(--muted); }
+    .loading-row i { margin-right: 8px; }
+
+    .mobile-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 15;
+      background: rgba(0,0,0,.35);
+    }
+
+    @media (max-width: 1250px) {
+      .filters { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+      .filter-actions { justify-content: flex-start; }
+      .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+
+    @media (max-width: 850px) {
+      .sidebar { transform: translateX(-100%); }
+      .sidebar.open { transform: translateX(0); }
+      .mobile-overlay.show { display: block; }
+      .main { margin-left: 0; }
+      .menu-toggle { display: inline-grid; place-items: center; }
+      .topbar { padding: 0 18px; }
+      .content { padding: 24px 18px 35px; }
+      .top-date { display: none; }
+      .page-heading { flex-direction: column; }
+      .page-actions { flex-wrap: wrap; }
+    }
+
+    @media (max-width: 560px) {
+      .stats { gap: 10px; }
+      .stat-card { padding: 14px; }
+      .stat-number { font-size: 24px; }
+      .filters { grid-template-columns: repeat(2, minmax(0, 1fr)); padding: 14px; }
+      .filters .field:first-child { grid-column: 1 / -1; }
+      .filter-actions { grid-column: 1 / -1; }
+      .panel-header { padding: 16px; }
+      .selection-bar { align-items: flex-start; flex-direction: column; padding: 13px 16px; }
+      .table-footer { align-items: flex-start; flex-direction: column; }
+      .detail-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .detail-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .modal-header, .modal-body { padding: 18px; }
+      .modal-footer { align-items: flex-start; flex-direction: column; padding: 15px 18px; }
+      .modal-footer .right { width: 100%; }
+      .modal-footer .right .btn { flex: 1; }
+      .connection { padding: 7px; }
+      .connection span:last-child { display: none; }
+    }
+  </style>
+</head>
+
+<body>
+<div class="app">
+
+  <aside class="sidebar" id="sidebar">
+    <div class="brand">
+      <div class="brand-mark"><i class="fa-solid fa-bed"></i></div>
+      <div>
+        <div class="brand-name">BedCheck</div>
+        <div class="brand-sub">Hostel Space Manager</div>
+      </div>
+    </div>
+
+    <div class="nav-label">WORKSPACE</div>
+    <a class="nav-link" href="index.html"><i class="fa-solid fa-chart-pie"></i> Dashboard</a>
+    <a class="nav-link" href="scan.html"><i class="fa-solid fa-radar"></i> Scan for Space</a>
+    <a class="nav-link" href="inventory.html"><i class="fa-solid fa-building"></i> Inventory &amp; Records</a>
+    <a class="nav-link" href="protected-spaces.html"><i class="fa-solid fa-shield-halved"></i> Protected Spaces</a>
+    <a class="nav-link active" href="history.html"><i class="fa-solid fa-clock-rotate-left"></i> Scan History</a>
+    <a class="nav-link" href="reports.html"><i class="fa-solid fa-file-lines"></i> Reports &amp; Exports</a>
+
+    <div class="nav-label">CONFIGURATION</div>
+    <a class="nav-link" href="settings.html"><i class="fa-solid fa-gear"></i> Settings</a>
+
+    <div class="sidebar-bottom">
+      <div><strong>Private workspace</strong></div>
+      <div>Personal hostel-space records</div>
+      <div style="margin-top:9px">BedCheck · Scan History</div>
+    </div>
+  </aside>
+
+  <div class="mobile-overlay" id="mobileOverlay"></div>
+
+  <main class="main">
+    <header class="topbar">
+      <div class="topbar-left">
+        <button class="menu-toggle" id="menuToggle" aria-label="Open navigation">
+          <i class="fa-solid fa-bars"></i>
+        </button>
+        <div class="crumb">Workspace <span style="margin:0 7px">/</span> <strong>Scan History</strong></div>
+      </div>
+
+      <div class="topbar-right">
+        <div class="connection" id="connectionStatus">
+          <span class="connection-dot"></span>
+          <span id="connectionText">Checking connection</span>
+        </div>
+        <div class="top-date" id="todayDate"></div>
+      </div>
+    </header>
+
+    <div class="content">
+      <section class="page-heading">
+        <div>
+          <div class="eyebrow">Records &amp; Audit Trail</div>
+          <h1>Scan History</h1>
+          <p class="subtitle">
+            Review previous hostel-space scans, inspect historical availability,
+            and compare results without changing your current inventory or protected-space records.
+          </p>
+        </div>
+
+        <div class="page-actions">
+          <button class="btn" id="refreshBtn">
+            <i class="fa-solid fa-rotate"></i> Refresh
+          </button>
+          <button class="btn btn-primary" id="exportBtn">
+            <i class="fa-solid fa-file-excel"></i> Export History CSV
+          </button>
+        </div>
+      </section>
+
+      <section class="stats">
+        <article class="stat-card">
+          <div class="stat-top">
+            <div class="stat-label">Total Scans</div>
+            <div class="stat-icon"><i class="fa-solid fa-clock-rotate-left"></i></div>
+          </div>
+          <div class="stat-number" id="totalScans">—</div>
+          <div class="stat-foot">Scans matching the current filters</div>
+        </article>
+
+        <article class="stat-card">
+          <div class="stat-top">
+            <div class="stat-label">Successful Scans</div>
+            <div class="stat-icon"><i class="fa-solid fa-circle-check"></i></div>
+          </div>
+          <div class="stat-number" id="successfulScans">—</div>
+          <div class="stat-foot">Completed successfully</div>
+        </article>
+
+        <article class="stat-card">
+          <div class="stat-top">
+            <div class="stat-label">Available Beds Found</div>
+            <div class="stat-icon"><i class="fa-solid fa-bed"></i></div>
+          </div>
+          <div class="stat-number" id="availableBeds">—</div>
+          <div class="stat-foot">From the latest successful scan in this result set</div>
+        </article>
+
+        <article class="stat-card">
+          <div class="stat-top">
+            <div class="stat-label">Failed / Cancelled</div>
+            <div class="stat-icon"><i class="fa-solid fa-triangle-exclamation"></i></div>
+          </div>
+          <div class="stat-number" id="unsuccessfulScans">—</div>
+          <div class="stat-foot">Incomplete scans remain visible for auditing</div>
+        </article>
+      </section>
+
+      <section class="panel">
+        <div class="panel-header">
+          <div>
+            <h2 class="panel-title">Historical scan register</h2>
+            <div class="panel-description">Select a scan to inspect its recorded results and execution details.</div>
+          </div>
+          <span class="muted" id="resultCount">Loading records…</span>
+        </div>
+
+        <div class="filters">
+          <div class="field">
+            <label for="searchInput">Search</label>
+            <div class="search-wrap">
+              <i class="fa-solid fa-magnifying-glass"></i>
+              <input class="control" id="searchInput" type="search" placeholder="Scan ID, campus, hostel…">
+            </div>
+          </div>
+
+          <div class="field">
+            <label for="statusFilter">Scan status</label>
+            <select class="control" id="statusFilter">
+              <option value="">All statuses</option>
+              <option value="completed">Completed</option>
+              <option value="partial">Partially completed</option>
+              <option value="running">Running</option>
+              <option value="failed">Failed</option>
+              <option value="cancelled">Cancelled</option>
+            </select>
+          </div>
+
+          <div class="field">
+            <label for="scopeFilter">Scan scope</label>
+            <select class="control" id="scopeFilter">
+              <option value="">All scopes</option>
+              <option value="all">All hostels</option>
+              <option value="campus">Campus</option>
+              <option value="hostel">Single hostel</option>
+            </select>
+          </div>
+
+          <div class="field">
+            <label for="dateFilter">Date range</label>
+            <select class="control" id="dateFilter">
+              <option value="">All dates</option>
+              <option value="today">Today</option>
+              <option value="7">Last 7 days</option>
+              <option value="30">Last 30 days</option>
+              <option value="90">Last 90 days</option>
+            </select>
+          </div>
+
+          <div class="filter-actions">
+            <button class="btn" id="clearFiltersBtn">Clear filters</button>
+          </div>
+        </div>
+
+        <div class="selection-bar" id="selectionBar">
+          <div class="selection-label" id="selectionLabel">0 scans selected</div>
+          <div class="selection-actions">
+            <button class="btn btn-small" id="compareBtn">
+              <i class="fa-solid fa-code-compare"></i> Compare selected
+            </button>
+            <button class="btn btn-small" id="exportSelectedBtn">
+              <i class="fa-solid fa-download"></i> Export selected
+            </button>
+            <button class="btn btn-small" id="clearSelectionBtn">Clear selection</button>
+          </div>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th><input type="checkbox" id="selectAll" aria-label="Select all visible scans"></th>
+                <th>Scan reference</th>
+                <th>Date &amp; time</th>
+                <th>Scope</th>
+                <th>Status</th>
+                <th>Rooms checked</th>
+                <th>Available beds</th>
+                <th>Duration</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="historyBody">
+              <tr><td colspan="9"><div class="loading-row"><i class="fa-solid fa-spinner fa-spin"></i>Loading scan history…</div></td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="table-footer">
+          <div id="paginationInfo">Waiting for records…</div>
+          <div class="pagination">
+            <button class="btn btn-small icon-btn" id="prevPage" aria-label="Previous page">
+              <i class="fa-solid fa-chevron-left"></i>
+            </button>
+            <span class="page-number" id="pageLabel">Page 1</span>
+            <button class="btn btn-small icon-btn" id="nextPage" aria-label="Next page">
+              <i class="fa-solid fa-chevron-right"></i>
+            </button>
+            <select class="control" id="pageSize" style="width:76px;height:30px;padding:0 6px">
+              <option value="10">10 rows</option>
+              <option value="25" selected>25 rows</option>
+              <option value="50">50 rows</option>
+              <option value="100">100 rows</option>
+            </select>
+          </div>
+        </div>
+      </section>
+
+      <section class="note-panel">
+        <i class="fa-solid fa-shield-halved"></i>
+        <div>
+          <strong>Historical records are not live availability.</strong>
+          <p>
+            A past scan represents what the portal reported at that time. It does not guarantee that
+            a bed is currently available. Failed or cancelled scans must not be interpreted as zero
+            availability, and scan results must never automatically remove protected-space records.
+          </p>
+        </div>
+      </section>
+    </div>
+  </main>
+</div>
+
+<!-- Scan details modal -->
+<div class="modal-backdrop" id="detailsBackdrop" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+  <section class="modal">
+    <div class="modal-header">
+      <div>
+        <h2 id="modalTitle">Scan details</h2>
+        <p id="modalSubtitle">Historical scan information</p>
+      </div>
+      <button class="btn icon-btn" id="closeModalBtn" aria-label="Close details">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+    </div>
+
+    <div class="modal-body">
+      <div class="detail-stats">
+        <div class="detail-stat"><span>Rooms checked</span><strong id="detailRooms">—</strong></div>
+        <div class="detail-stat"><span>Available beds</span><strong id="detailBeds">—</strong></div>
+        <div class="detail-stat"><span>Hostels checked</span><strong id="detailHostels">—</strong></div>
+        <div class="detail-stat"><span>Duration</span><strong id="detailDuration">—</strong></div>
+      </div>
+
+      <div class="detail-section-title">Execution details</div>
+      <div class="detail-grid" id="detailGrid"></div>
+
+      <div class="detail-section-title">Results from this scan</div>
+      <div class="table-wrap" style="border:1px solid var(--line);border-radius:10px">
+        <table>
+          <thead>
+            <tr>
+              <th>Campus</th>
+              <th>Hostel</th>
+              <th>Floor / Flat</th>
+              <th>Room</th>
+              <th>Availability</th>
+            </tr>
+          </thead>
+          <tbody id="detailResultsBody">
+            <tr><td colspan="5"><div class="loading-row">Select a scan to load its results.</div></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="panel-description" id="detailResultsNote" style="margin-top:10px"></div>
+    </div>
+
+    <div class="modal-footer">
+      <span class="muted" id="detailFooterText">Read-only historical snapshot</span>
+      <div class="right">
+        <button class="btn" id="closeModalFooterBtn">Close</button>
+        <button class="btn btn-primary" id="exportDetailBtn">
+          <i class="fa-solid fa-download"></i> Export scan results
+        </button>
+      </div>
+    </div>
+  </section>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(() => {
+  "use strict";
+
+  /*
+   * API CONTRACT
+   *
+   * GET  /api/dashboard
+   * GET  /api/scans?page=1&limit=25&search=...&status=...&scope=...&date_from=...&date_to=...
+   * GET  /api/scans/:id
+   * GET  /api/scans/:id/results?page=1&limit=100
+   * GET  /api/reports/scans/:id.xlsx
+   *
+   * GET /api/scans should return:
+   * {
+   *   "items": [{
+   *     "id": 12,
+   *     "scan_reference": "SCAN-00012",
+   *     "started_at": "2026-10-12T10:20:00Z",
+   *     "completed_at": "2026-10-12T10:23:00Z",
+   *     "scope_type": "all",
+   *     "scope_name": "All hostels",
+   *     "status": "completed",
+   *     "rooms_checked": 42,
+   *     "available_beds": 18,
+   *     "hostels_checked": 5,
+   *     "duration_seconds": 180
+   *   }],
+   *   "total": 1,
+   *   "page": 1,
+   *   "limit": 25
+   * }
+   *
+   * The exact field names can be adjusted to match your backend.
+   * Do not send portal passwords to this page.
+   */
+
+  const API_BASE = "";
+  const $ = id => document.getElementById(id);
+
+  const state = {
+    items: [],
+    total: 0,
+    page: 1,
+    pageSize: 25,
+    selected: new Set(),
+    activeScan: null,
+    activeScanId: null,
+    activeResults: [],
+    toastTimer: null,
+    searchTimer: null,
+    loading: false,
+    totalPages: 1
+  };
+
+  function escapeHTML(value) {
+    return String(value ?? "").replace(/[&<>"']/g, char => ({
+      "&": "&amp;",
+      "<": "&lt;",
+      ">": "&gt;",
+      '"': "&quot;",
+      "'": "&#39;"
+    })[char]);
+  }
+
+  function safeNumber(value) {
+    const n = Number(value);
+    return Number.isFinite(n) ? n : null;
+  }
+
+  function formatNumber(value) {
+    const n = safeNumber(value);
+    return n === null ? "—" : n.toLocaleString();
+  }
+
+  function formatDate(value) {
+    if (!value) return "—";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "—";
+
+    return new Intl.DateTimeFormat("en-NG", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit"
+    }).format(date);
+  }
+
+  function formatDuration(value) {
+    const n = safeNumber(value);
+    if (n === null || n < 0) return "—";
+
+    const seconds = Math.floor(n);
+    if (seconds < 60) return `${seconds}s`;
+
+    const minutes = Math.floor(seconds / 60);
+    const remaining = seconds % 60;
+
+    if (minutes < 60) return remaining ? `${minutes}m ${remaining}s` : `${minutes}m`;
+
+    const hours = Math.floor(minutes / 60);
+    const remainingMinutes = minutes % 60;
+    return `${hours}h ${remainingMinutes}m`;
+  }
+
+  function durationFor(scan) {
+    if (scan.duration_seconds != null) return scan.duration_seconds;
+
+    const start = scan.started_at || scan.created_at;
+    const end = scan.completed_at || scan.finished_at;
+
+    if (!start || !end) return null;
+
+    const difference = (new Date(end) - new Date(start)) / 1000;
+    return Number.isFinite(difference) && difference >= 0 ? difference : null;
+  }
+
+  function normalizedStatus(status) {
+    const s = String(status || "").toLowerCase();
+
+    if (["completed", "complete", "success", "successful", "succeeded"].includes(s)) return "completed";
+    if (["partial", "partially_completed", "completed_with_errors"].includes(s)) return "partial";
+    if (["running", "queued", "pending", "in_progress"].includes(s)) return "running";
+    if (["failed", "error"].includes(s)) return "failed";
+    if (["cancelled", "canceled", "aborted"].includes(s)) return "cancelled";
+
+    return "unknown";
+  }
+
+  function statusLabel(status) {
+    return ({
+      completed: "Completed",
+      partial: "Partial",
+      running: "Running",
+      failed: "Failed",
+      cancelled: "Cancelled",
+      unknown: "Unknown"
+    })[normalizedStatus(status)];
+  }
+
+  function statusBadge(status) {
+    const s = normalizedStatus(status);
+    const css = s === "completed" ? "success"
+      : s === "partial" ? "partial"
+      : s === "running" ? "running"
+      : s === "failed" ? "failed"
+      : s === "cancelled" ? "cancelled"
+      : "cancelled";
+
+    return `<span class="status ${css}">${escapeHTML(statusLabel(s))}</span>`;
+  }
+
+  function scopeLabel(scan) {
+    const raw = String(scan.scope_type || scan.scope || "").toLowerCase();
+
+    if (scan.scope_name) return scan.scope_name;
+    if (["all", "all_hostels", "full"].includes(raw)) return "All hostels";
+    if (raw === "campus") return scan.campus_name || "Selected campus";
+    if (raw === "hostel") return scan.hostel_name || "Selected hostel";
+
+    return raw ? raw.replace(/_/g, " ") : "—";
+  }
+
+  function scanReference(scan) {
+    return scan.scan_reference || scan.reference || `SCAN-${String(scan.id ?? "UNKNOWN")}`;
+  }
+
+  function startedAt(scan) {
+    return scan.started_at || scan.created_at || scan.start_time || null;
+  }
+
+  function availableBeds(scan) {
+    // Do not treat missing data on a failed scan as zero.
+    const status = normalizedStatus(scan.status);
+
+    if (status === "failed" || status === "cancelled" || status === "running") {
+      if (scan.available_beds == null) return null;
+    }
+
+    return safeNumber(scan.available_beds ?? scan.total_available_beds);
+  }
+
+  function renderAvailable(value) {
+    return value === null ? '<span class="muted">Not available</span>' : formatNumber(value);
+  }
+
+  function toast(message, error = false) {
+    const element = $("toast");
+    element.textContent = message;
+    element.classList.toggle("error", error);
+    element.classList.add("show");
+
+    clearTimeout(state.toastTimer);
+    state.toastTimer = setTimeout(() => element.classList.remove("show"), 3200);
+  }
+
+  async function api(path, options = {}) {
+    const response = await fetch(`${API_BASE}${path}`, {
+      credentials: "same-origin",
+      ...options,
+      headers: {
+        Accept: "application/json",
+        ...(options.body ? { "Content-Type": "application/json" } : {}),
+        ...(options.headers || {})
+      }
+    });
+
+    if (!response.ok) {
+      let message = `Request failed (${response.status})`;
+
+      try {
+        const data = await response.json();
+        message = data.message || data.error || message;
+      } catch (_) {}
+
+      throw new Error(message);
+    }
+
+    if (response.status === 204) return null;
+
+    const contentType = response.headers.get("content-type") || "";
+    if (contentType.includes("application/json")) return response.json();
+
+    return response;
+  }
+
+  function normalizeList(data) {
+    if (Array.isArray(data)) return data;
+    if (Array.isArray(data?.items)) return data.items;
+    if (Array.isArray(data?.scans)) return data.scans;
+    if (Array.isArray(data?.results)) return data.results;
+    return [];
+  }
+
+  function buildQuery() {
+    const params = new URLSearchParams();
+    params.set("page", String(state.page));
+    params.set("limit", String(state.pageSize));
+
+    const search = $("searchInput").value.trim();
+    const status = $("statusFilter").value;
+    const scope = $("scopeFilter").value;
+    const range = $("dateFilter").value;
+
+    if (search) params.set("search", search);
+    if (status) params.set("status", status);
+    if (scope) params.set("scope", scope);
+
+    if (range) {
+      const now = new Date();
+      const from = new Date(now);
+
+      if (range === "today") {
+        from.setHours(0, 0, 0, 0);
+      } else {
+        from.setDate(from.getDate() - Number(range));
+        from.setHours(0, 0, 0, 0);
+      }
+
+      params.set("date_from", from.toISOString());
+      params.set("date_to", now.toISOString());
+    }
+
+    return params;
+  }
+
+  function updateStats() {
+    const successful = state.items.filter(item =>
+      normalizedStatus(item.status) === "completed"
+    ).length;
+
+    const unsuccessful = state.items.filter(item =>
+      ["failed", "cancelled"].includes(normalizedStatus(item.status))
+    ).length;
+
+    const latestSuccessful = state.items
+      .filter(item => normalizedStatus(item.status) === "completed")
+      .sort((a, b) => {
+        return new Date(startedAt(b) || 0) - new Date(startedAt(a) || 0);
+      })[0];
+
+    $("totalScans").textContent = formatNumber(state.total);
+    $("successfulScans").textContent = formatNumber(successful);
+    $("unsuccessfulScans").textContent = formatNumber(unsuccessful);
+
+    const beds = latestSuccessful ? availableBeds(latestSuccessful) : null;
+    $("availableBeds").textContent = beds === null ? "—" : formatNumber(beds);
+
+    $("resultCount").textContent =
+      `${formatNumber(state.total)} record${state.total === 1 ? "" : "s"}`;
+  }
+
+  function renderTable() {
+    const body = $("historyBody");
+
+    if (!state.items.length) {
+      body.innerHTML = `
+        <tr><td colspan="9">
+          <div class="empty">
+            <i class="fa-solid fa-clock-rotate-left"></i>
+            <strong>No scan history found</strong>
+            <p>Try changing the filters, or run a new scan from the Scan for Space page.</p>
+          </div>
+        </td></tr>`;
+
+      updatePagination();
+      updateSelectionUI();
+      return;
+    }
+
+    body.innerHTML = state.items.map(scan => {
+      const id = escapeHTML(scan.id);
+      const checked = state.selected.has(String(scan.id)) ? "checked" : "";
+      const status = normalizedStatus(scan.status);
+      const available = availableBeds(scan);
+      const rooms = scan.rooms_checked ?? scan.rooms_processed ?? scan.total_rooms_checked;
+      const duration = durationFor(scan);
+      const time = startedAt(scan);
+
+      return `
+        <tr>
+          <td>
+            <input type="checkbox" class="scan-checkbox"
+              data-id="${id}" ${checked}
+              aria-label="Select scan ${escapeHTML(scanReference(scan))}">
+          </td>
+          <td>
+            <div class="scan-id">${escapeHTML(scanReference(scan))}</div>
+            <div class="scan-sub">ID: ${id}</div>
+          </td>
+          <td>
+            <div>${escapeHTML(formatDate(time))}</div>
+            <div class="scan-sub">${scan.completed_at ? "Finished " + escapeHTML(formatDate(scan.completed_at)) : "Finish time not recorded"}</div>
+          </td>
+          <td><span class="scope-name">${escapeHTML(scopeLabel(scan))}</span></td>
+          <td>${statusBadge(scan.status)}</td>
+          <td class="num">${formatNumber(rooms)}</td>
+          <td class="num">${renderAvailable(available)}</td>
+          <td>${escapeHTML(formatDuration(duration))}</td>
+          <td>
+            <div class="row-actions">
+              <button class="btn btn-small view-btn" data-id="${id}" title="View scan details">
+                <i class="fa-regular fa-eye"></i> View
+              </button>
+              <button class="btn btn-small icon-btn export-row-btn" data-id="${id}" title="Export scan results">
+                <i class="fa-solid fa-download"></i>
+              </button>
+            </div>
+          </td>
+        </tr>`;
+    }).join("");
+
+    body.querySelectorAll(".scan-checkbox").forEach(input => {
+      input.addEventListener("change", () => {
+        const id = String(input.dataset.id);
+        if (input.checked) state.selected.add(id);
+        else state.selected.delete(id);
+
+        updateSelectionUI();
+      });
+    });
+
+    body.querySelectorAll(".view-btn").forEach(button => {
+      button.addEventListener("click", () => openDetails(button.dataset.id));
+    });
+
+    body.querySelectorAll(".export-row-btn").forEach(button => {
+      button.addEventListener("click", () => exportScan(button.dataset.id));
+    });
+
+    updatePagination();
+    updateSelectionUI();
+  }
+
+  function updatePagination() {
+    state.totalPages = Math.max(1, Math.ceil(state.total / state.pageSize));
+
+    $("pageLabel").textContent = `Page ${state.page} of ${state.totalPages}`;
+    $("paginationInfo").textContent = state.total
+      ? `Showing ${((state.page - 1) * state.pageSize) + 1}–${Math.min(state.page * state.pageSize, state.total)} of ${state.total} scans`
+      : "No records to display";
+
+    $("prevPage").disabled = state.page <= 1 || state.loading;
+    $("nextPage").disabled = state.page >= state.totalPages || state.loading;
+
+    const visibleIds = state.items.map(item => String(item.id));
+    $("selectAll").checked = visibleIds.length > 0 &&
+      visibleIds.every(id => state.selected.has(id));
+
+    $("selectAll").indeterminate = visibleIds.some(id => state.selected.has(id)) &&
+      !visibleIds.every(id => state.selected.has(id));
+  }
+
+  function updateSelectionUI() {
+    const count = state.selected.size;
+    $("selectionBar").classList.toggle("show", count > 0);
+    $("selectionLabel").textContent = `${count} scan${count === 1 ? "" : "s"} selected`;
+    $("compareBtn").disabled = count !== 2;
+    $("exportSelectedBtn").disabled = count === 0;
+    updatePagination();
+  }
+
+  async function loadHistory() {
+    if (state.loading) return;
+
+    state.loading = true;
+    $("refreshBtn").disabled = true;
+    $("historyBody").innerHTML = `
+      <tr><td colspan="9">
+        <div class="loading-row"><i class="fa-solid fa-spinner fa-spin"></i>Loading scan history…</div>
+      </td></tr>`;
+
+    try {
+      const query = buildQuery();
+      const data = await api(`/api/scans?${query.toString()}`);
+
+      state.items = normalizeList(data);
+      state.total = safeNumber(data?.total) ?? state.items.length;
+      state.page = safeNumber(data?.page) ?? state.page;
+      state.pageSize = safeNumber(data?.limit) ?? state.pageSize;
+
+      const visibleIds = new Set(state.items.map(item => String(item.id)));
+      // Keep selections across pages, but discard deleted or filtered-out selections.
+      // The backend should support cross-page comparison by scan ID.
+      state.selected = new Set([...state.selected].filter(id =>
+        visibleIds.has(id) || state.selected.size <= 2
+      ));
+
+      renderTable();
+      updateStats();
+      setConnection(true);
+    } catch (error) {
+      $("historyBody").innerHTML = `
+        <tr><td colspan="9">
+          <div class="empty">
+            <i class="fa-solid fa-triangle-exclamation"></i>
+            <strong>Could not load scan history</strong>
+            <p>${escapeHTML(error.message)}. Check that the backend is running and GET /api/scans is implemented.</p>
+          </div>
+        </td></tr>`;
+
+      setConnection(false);
+      toast("Could not load scan history: " + error.message, true);
+    } finally {
+      state.loading = false;
+      $("refreshBtn").disabled = false;
+      updatePagination();
+    }
+  }
+
+  function setConnection(online) {
+    const element = $("connectionStatus");
+    element.classList.toggle("online", online);
+    element.classList.toggle("offline", !online);
+    $("connectionText").textContent = online ? "API connected" : "API unavailable";
+  }
+
+  function detailItem(label, value) {
+    return `
+      <div class="detail-item">
+        <span>${escapeHTML(label)}</span>
+        <strong>${escapeHTML(value == null || value === "" ? "—" : value)}</strong>
+      </div>`;
+  }
+
+  async function openDetails(id) {
+    const scan = state.items.find(item => String(item.id) === String(id));
+
+    state.activeScanId = String(id);
+    state.activeScan = scan || null;
+    state.activeResults = [];
+
+    $("detailsBackdrop").classList.add("open");
+    document.body.style.overflow = "hidden";
+
+    $("modalTitle").textContent = scan ? scanReference(scan) : `Scan ${id}`;
+    $("modalSubtitle").textContent = scan
+      ? `${scopeLabel(scan)} · ${formatDate(startedAt(scan))}`
+      : "Loading scan details…";
+
+    $("detailResultsBody").innerHTML = `
+      <tr><td colspan="5"><div class="loading-row">
+        <i class="fa-solid fa-spinner fa-spin"></i>Loading results…
+      </div></td></tr>`;
+
+    $("detailResultsNote").textContent = "";
+    $("detailGrid").innerHTML = "";
+    $("detailRooms").textContent = "—";
+    $("detailBeds").textContent = "—";
+    $("detailHostels").textContent = "—";
+    $("detailDuration").textContent = "—";
+
+    try {
+      const data = await api(`/api/scans/${encodeURIComponent(id)}`);
+      const detail = data?.scan || data?.item || data;
+
+      state.activeScan = detail;
+      $("modalTitle").textContent = scanReference(detail);
+      $("modalSubtitle").textContent =
+        `${scopeLabel(detail)} · ${formatDate(startedAt(detail))} · ${statusLabel(detail.status)}`;
+
+      $("detailRooms").textContent = formatNumber(
+        detail.rooms_checked ?? detail.rooms_processed ?? detail.total_rooms_checked
+      );
+
+      const beds = availableBeds(detail);
+      $("detailBeds").textContent = beds === null ? "—" : formatNumber(beds);
+      $("detailHostels").textContent = formatNumber(detail.hostels_checked);
+      $("detailDuration").textContent = formatDuration(durationFor(detail));
+
+      $("detailGrid").innerHTML = [
+        detailItem("Scan reference", scanReference(detail)),
+        detailItem("Status", statusLabel(detail.status)),
+        detailItem("Scope", scopeLabel(detail)),
+        detailItem("Started", formatDate(startedAt(detail))),
+        detailItem("Completed", formatDate(detail.completed_at || detail.finished_at)),
+        detailItem("Requested mode", detail.mode || detail.scan_mode || "—"),
+        detailItem("Rooms discovered", formatNumber(detail.rooms_discovered)),
+        detailItem("Rooms checked", formatNumber(detail.rooms_checked ?? detail.rooms_processed)),
+        detailItem("Errors", formatNumber(detail.error_count)),
+        detailItem("Started by", detail.started_by || detail.created_by || "Local user"),
+        detailItem("Last update", formatDate(detail.updated_at)),
+        detailItem("Notes", detail.notes || detail.message || "—")
+      ].join("");
+
+      $("detailFooterText").textContent = "Read-only historical snapshot";
+
+      await loadScanResults(id);
+    } catch (error) {
+      $("detailResultsBody").innerHTML = `
+        <tr><td colspan="5"><div class="empty">
+          <strong>Could not load scan details</strong>
+          <p>${escapeHTML(error.message)}</p>
+        </div></td></tr>`;
+
+      toast("Could not load scan details: " + error.message, true);
+    }
+  }
+
+  async function loadScanResults(id) {
+    try {
+      const data = await api(
+        `/api/scans/${encodeURIComponent(id)}/results?page=1&limit=100`
+      );
+
+      const results = normalizeList(data);
+      state.activeResults = results;
+
+      if (!results.length) {
+        $("detailResultsBody").innerHTML = `
+          <tr><td colspan="5"><div class="empty">
+            <strong>No room-level results</strong>
+            <p>This scan has no saved result rows, or the backend has not implemented result retrieval.</p>
+          </div></td></tr>`;
+        $("detailResultsNote").textContent = "";
+        return;
+      }
+
+      $("detailResultsBody").innerHTML = results.map(result => {
+        const available = result.available_beds ??
+          result.available_bed_count ??
+          result.available_spaces;
+
+        const resultStatus = result.status || result.availability_status || "Unknown";
+        const displayAvailability = available == null
+          ? resultStatus
+          : `${formatNumber(available)} available`;
+
+        return `
+          <tr>
+            <td>${escapeHTML(result.campus_name || result.campus || "—")}</td>
+            <td>${escapeHTML(result.hostel_name || result.hostel || "—")}</td>
+            <td>${escapeHTML(result.floor_flat || result.floor || result.flat || "—")}</td>
+            <td>${escapeHTML(result.room_number || result.room || "—")}</td>
+            <td>${escapeHTML(displayAvailability)}</td>
+          </tr>`;
+      }).join("");
+
+      const total = safeNumber(data?.total);
+      $("detailResultsNote").textContent =
+        total != null && total > results.length
+          ? `Showing ${results.length} of ${total} saved result rows. Export the full scan for the complete record.`
+          : "These are saved historical results, not a live availability check.";
+    } catch (error) {
+      $("detailResultsBody").innerHTML = `
+        <tr><td colspan="5"><div class="empty">
+          <strong>Results could not be loaded</strong>
+          <p>${escapeHTML(error.message)}</p>
+        </div></td></tr>`;
+      $("detailResultsNote").textContent =
+        "The scan record may exist even if room-level result retrieval is unavailable.";
+    }
+  }
+
+  function closeDetails() {
+    $("detailsBackdrop").classList.remove("open");
+    document.body.style.overflow = "";
+  }
+
+  function downloadBlob(blob, filename) {
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = filename;
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
+  function csvCell(value) {
+    let text = value == null ? "" : String(value);
+
+    // Prevent spreadsheet formula injection in text exported to CSV.
+    if (/^[\s]*[=+\-@]/.test(text)) text = "'" + text;
+
+    return `"${text.replace(/"/g, '""')}"`;
+  }
+
+  function exportItemsCSV(items, filename) {
+    const columns = [
+      ["Scan ID", scan => scan.id],
+      ["Scan Reference", scan => scanReference(scan)],
+      ["Started At", scan => startedAt(scan)],
+      ["Completed At", scan => scan.completed_at || scan.finished_at],
+      ["Scope", scan => scopeLabel(scan)],
+      ["Status", scan => statusLabel(scan.status)],
+      ["Rooms Checked", scan => scan.rooms_checked ?? scan.rooms_processed],
+      ["Available Beds", scan => {
+        const value = availableBeds(scan);
+        return value === null ? "" : value;
+      }],
+      ["Hostels Checked", scan => scan.hostels_checked],
+      ["Duration Seconds", scan => durationFor(scan)],
+      ["Notes", scan => scan.notes || scan.message]
+    ];
+
+    const csv = [
+      columns.map(([label]) => csvCell(label)).join(","),
+      ...items.map(item => columns.map(([, getter]) => csvCell(getter(item))).join(","))
+    ].join("\r\n");
+
+    downloadBlob(
+      new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" }),
+      filename
+    );
+  }
+
+  function dateStamp() {
+    return new Date().toISOString().slice(0, 10);
+  }
+
+  function exportHistory() {
+    if (!state.items.length) {
+      toast("There are no visible scan records to export.", true);
+      return;
+    }
+
+    exportItemsCSV(state.items, `bedcheck-scan-history-page-${state.page}-${dateStamp()}.csv`);
+    toast("Visible history page exported as CSV.");
+  }
+
+  async function exportScan(id) {
+    try {
+      const response = await fetch(
+        `${API_BASE}/api/reports/scans/${encodeURIComponent(id)}.xlsx`,
+        { credentials: "same-origin" }
+      );
+
+      if (!response.ok) {
+        throw new Error(`Export failed (${response.status}). Check the scan export endpoint.`);
+      }
+
+      const blob = await response.blob();
+      const scan = state.items.find(item => String(item.id) === String(id));
+      const filename = `${scan ? scanReference(scan) : "scan-" + id}-results.xlsx`
+        .replace(/[^a-zA-Z0-9._-]/g, "_");
+
+      downloadBlob(blob, filename);
+      toast("Scan results export downloaded.");
+    } catch (error) {
+      toast(error.message, true);
+    }
+  }
+
+  function exportSelected() {
+    const selected = state.items.filter(item =>
+      state.selected.has(String(item.id))
+    );
+
+    if (!selected.length) {
+      toast("No selected scans are available on this page.", true);
+      return;
+    }
+
+    exportItemsCSV(selected, `bedcheck-selected-scans-${dateStamp()}.csv`);
+    toast("Selected scan summary exported as CSV.");
+  }
+
+  async function compareSelected() {
+    const ids = [...state.selected];
+
+    if (ids.length !== 2) {
+      toast("Select exactly two scans to compare.", true);
+      return;
+    }
+
+    try {
+      const [firstData, secondData] = await Promise.all([
+        api(`/api/scans/${encodeURIComponent(ids[0])}`),
+        api(`/api/scans/${encodeURIComponent(ids[1])}`)
+      ]);
+
+      const first = firstData?.scan || firstData?.item || firstData;
+      const second = secondData?.scan || secondData?.item || secondData;
+
+      if (
+        normalizedStatus(first.status) !== "completed" ||
+        normalizedStatus(second.status) !== "completed"
+      ) {
+        toast("For a reliable availability comparison, select two successful scans.", true);
+        return;
+      }
+
+      const a = availableBeds(first);
+      const b = availableBeds(second);
+
+      if (a === null || b === null) {
+        toast("One or both scans do not contain a recorded available-bed total.", true);
+        return;
+      }
+
+      const difference = b - a;
+      const direction = difference > 0
+        ? "increase"
+        : difference < 0
+          ? "decrease"
+          : "no change";
+
+      const message = difference === 0
+        ? `No change in available beds: both scans recorded ${formatNumber(a)}.`
+        : `Available beds changed from ${formatNumber(a)} to ${formatNumber(b)} — ${formatNumber(Math.abs(difference))} ${direction}.`;
+
+      $("compareBtn").innerHTML = '<i class="fa-solid fa-code-compare"></i> Compare selected';
+      toast(message);
+    } catch (error) {
+      toast("Could not compare scans: " + error.message, true);
+    }
+  }
+
+  function clearFilters() {
+    $("searchInput").value = "";
+    $("statusFilter").value = "";
+    $("scopeFilter").value = "";
+    $("dateFilter").value = "";
+    state.page = 1;
+    state.selected.clear();
+    loadHistory();
+  }
+
+  function closeSidebar() {
+    $("sidebar").classList.remove("open");
+    $("mobileOverlay").classList.remove("show");
+  }
+
+  // Event listeners
+  $("refreshBtn").addEventListener("click", loadHistory);
+  $("exportBtn").addEventListener("click", exportHistory);
+  $("clearFiltersBtn").addEventListener("click", clearFilters);
+
+  $("searchInput").addEventListener("input", () => {
+    clearTimeout(state.searchTimer);
+    state.searchTimer = setTimeout(() => {
+      state.page = 1;
+      loadHistory();
+    }, 350);
+  });
+
+  ["statusFilter", "scopeFilter", "dateFilter"].forEach(id => {
+    $(id).addEventListener("change", () => {
+      state.page = 1;
+      loadHistory();
+    });
+  });
+
+  $("pageSize").addEventListener("change", () => {
+    state.pageSize = Number($("pageSize").value) || 25;
+    state.page = 1;
+    loadHistory();
+  });
+
+  $("prevPage").addEventListener("click", () => {
+    if (state.page > 1) {
+      state.page--;
+      loadHistory();
+    }
+  });
+
+  $("nextPage").addEventListener("click", () => {
+    if (state.page < state.totalPages) {
+      state.page++;
+      loadHistory();
+    }
+  });
+
+  $("selectAll").addEventListener("change", event => {
+    const visibleIds = state.items.map(item => String(item.id));
+
+    visibleIds.forEach(id => {
+      if (event.target.checked) state.selected.add(id);
+      else state.selected.delete(id);
+    });
+
+    renderTable();
+  });
+
+  $("clearSelectionBtn").addEventListener("click", () => {
+    state.selected.clear();
+    renderTable();
+  });
+
+  $("exportSelectedBtn").addEventListener("click", exportSelected);
+  $("compareBtn").addEventListener("click", compareSelected);
+
+  $("closeModalBtn").addEventListener("click", closeDetails);
+  $("closeModalFooterBtn").addEventListener("click", closeDetails);
+
+  $("detailsBackdrop").addEventListener("click", event => {
+    if (event.target === $("detailsBackdrop")) closeDetails();
+  });
+
+  document.addEventListener("keydown", event => {
+    if (event.key === "Escape") closeDetails();
+  });
+
+  $("exportDetailBtn").addEventListener("click", () => {
+    if (state.activeScanId) exportScan(state.activeScanId);
+  });
+
+  $("menuToggle").addEventListener("click", () => {
+    $("sidebar").classList.toggle("open");
+    $("mobileOverlay").classList.toggle("show");
+  });
+
+  $("mobileOverlay").addEventListener("click", closeSidebar);
+
+  $("todayDate").textContent = new Intl.DateTimeFormat("en-NG", {
+    weekday: "short",
+    day: "2-digit",
+    month: "short",
+    year: "numeric"
+  }).format(new Date());
+
+  loadHistory();
+})();
+</script>
+</body>
+</html>

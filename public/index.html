@@ -1,0 +1,1521 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#10233f">
+  <title>Hostel Space Finder · Dashboard</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Merriweather:wght@700;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
+
+  <style>
+    :root {
+      --navy: #10233f;
+      --navy-light: #1a3558;
+      --gold: #d6ad4b;
+      --paper: #f5f1e8;
+      --white: #fff;
+      --ink: #1d2939;
+      --muted: #778195;
+      --line: #e5e8ee;
+      --green: #18794e;
+      --green-bg: #e9f7ef;
+      --red: #b42318;
+      --red-bg: #fef0ee;
+      --blue-bg: #edf3fb;
+      --shadow: 0 5px 20px rgba(16,35,63,.055);
+      --radius: 15px;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: #f7f8fa;
+      color: var(--ink);
+      font-family: 'Inter', sans-serif;
+      font-size: 14px;
+    }
+
+    button, input, select { font: inherit; }
+    button { cursor: pointer; }
+
+    .sidebar {
+      position: fixed;
+      inset: 0 auto 0 0;
+      width: 254px;
+      padding: 25px 17px;
+      background: var(--navy);
+      color: white;
+      display: flex;
+      flex-direction: column;
+      z-index: 20;
+      overflow-y: auto;
+      transition: transform .25s ease;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 0 9px 28px;
+      border-bottom: 1px solid rgba(255,255,255,.12);
+    }
+
+    .brand-mark {
+      width: 43px;
+      height: 43px;
+      border-radius: 12px;
+      background: var(--gold);
+      color: var(--navy);
+      display: grid;
+      place-items: center;
+      font-size: 19px;
+    }
+
+    .brand h1 {
+      font: 900 15px 'Merriweather', serif;
+      margin: 0 0 5px;
+      letter-spacing: -.3px;
+    }
+
+    .brand p {
+      margin: 0;
+      color: #b9c4d5;
+      font-size: 10px;
+      letter-spacing: 1.2px;
+      text-transform: uppercase;
+    }
+
+    .nav-label {
+      padding: 25px 12px 10px;
+      color: #8fa0b9;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 1.4px;
+      text-transform: uppercase;
+    }
+
+    .nav-link {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 13px;
+      margin: 2px 0;
+      border-radius: 9px;
+      text-decoration: none;
+      color: #c6d0df;
+      font-size: 12px;
+      font-weight: 500;
+      transition: .2s;
+    }
+
+    .nav-link i {
+      width: 17px;
+      text-align: center;
+      font-size: 14px;
+    }
+
+    .nav-link:hover {
+      background: rgba(255,255,255,.07);
+      color: white;
+    }
+
+    .nav-link.active {
+      background: rgba(214,173,75,.15);
+      color: #f1d68d;
+      border-left: 3px solid var(--gold);
+      padding-left: 10px;
+    }
+
+    .sidebar-bottom {
+      margin-top: auto;
+      padding: 19px 10px 0;
+      border-top: 1px solid rgba(255,255,255,.12);
+    }
+
+    .private-note {
+      display: flex;
+      gap: 9px;
+      color: #c6d0df;
+      font-size: 11px;
+      line-height: 1.7;
+    }
+
+    .private-note i { color: var(--gold); margin-top: 3px; }
+
+    .main { margin-left: 254px; min-height: 100vh; }
+
+    .topbar {
+      height: 76px;
+      background: white;
+      border-bottom: 1px solid var(--line);
+      padding: 0 34px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 15px;
+    }
+
+    .breadcrumbs { color: var(--muted); font-size: 12px; }
+    .breadcrumbs strong { color: var(--navy); }
+
+    .top-actions {
+      display: flex;
+      align-items: center;
+      gap: 13px;
+    }
+
+    .connection-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 8px 10px;
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      color: #586578;
+      font-size: 11px;
+      background: white;
+      white-space: nowrap;
+    }
+
+    .connection-pill i { color: var(--muted); font-size: 8px; }
+    .connection-pill.connected i { color: var(--green); }
+    .connection-pill.disconnected i { color: var(--red); }
+
+    .avatar {
+      width: 37px;
+      height: 37px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      background: var(--navy);
+      color: var(--gold);
+      font-weight: 700;
+      font-size: 12px;
+    }
+
+    .mobile-menu {
+      display: none;
+      border: 0;
+      background: transparent;
+      color: var(--navy);
+      font-size: 20px;
+    }
+
+    .content {
+      max-width: 1500px;
+      padding: 32px 34px 48px;
+      margin: auto;
+    }
+
+    .welcome {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 20px;
+      margin-bottom: 26px;
+    }
+
+    .eyebrow {
+      color: #8b6b20;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 1.6px;
+      text-transform: uppercase;
+      margin-bottom: 9px;
+    }
+
+    .welcome h2 {
+      font: 900 25px 'Merriweather', serif;
+      color: var(--navy);
+      letter-spacing: -.6px;
+      margin: 0 0 9px;
+    }
+
+    .welcome p {
+      color: var(--muted);
+      margin: 0;
+      line-height: 1.7;
+      font-size: 12px;
+    }
+
+    .welcome-actions {
+      display: flex;
+      gap: 9px;
+      flex-wrap: wrap;
+    }
+
+    .button {
+      border: 1px solid transparent;
+      border-radius: 9px;
+      padding: 10px 14px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      font-weight: 600;
+      font-size: 12px;
+      text-decoration: none;
+      transition: .2s;
+      white-space: nowrap;
+    }
+
+    .button-primary { background: var(--navy); color: white; }
+    .button-primary:hover { background: var(--navy-light); }
+    .button-gold { background: var(--gold); color: var(--navy); }
+    .button-gold:hover { background: #e5bd5b; }
+    .button-outline { border-color: var(--line); color: var(--navy); background: white; }
+    .button-outline:hover { background: #f6f8fb; }
+
+    .hero {
+      position: relative;
+      overflow: hidden;
+      background: var(--navy);
+      color: white;
+      border-radius: 17px;
+      padding: 27px 29px;
+      margin-bottom: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 25px;
+      box-shadow: 0 9px 25px rgba(16,35,63,.12);
+    }
+
+    .hero::after {
+      content: "";
+      position: absolute;
+      width: 300px;
+      height: 300px;
+      border: 1px solid rgba(214,173,75,.2);
+      border-radius: 50%;
+      right: 6%;
+      top: -185px;
+      box-shadow: 0 0 0 32px rgba(214,173,75,.035),
+                  0 0 0 68px rgba(214,173,75,.025);
+      pointer-events: none;
+    }
+
+    .hero-copy { position: relative; z-index: 1; }
+
+    .hero-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 6px 9px;
+      border-radius: 20px;
+      background: rgba(214,173,75,.14);
+      color: #f1d68d;
+      font-size: 10px;
+      font-weight: 700;
+      margin-bottom: 13px;
+    }
+
+    .hero h3 {
+      font: 700 19px 'Merriweather', serif;
+      margin: 0 0 9px;
+      line-height: 1.5;
+    }
+
+    .hero p {
+      margin: 0;
+      max-width: 540px;
+      color: #c9d3e1;
+      font-size: 11px;
+      line-height: 1.8;
+    }
+
+    .hero-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 9px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .hero .button-outline {
+      color: white;
+      border-color: rgba(255,255,255,.25);
+      background: rgba(255,255,255,.06);
+    }
+
+    .hero .button-outline:hover { background: rgba(255,255,255,.12); }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 16px;
+      margin-bottom: 25px;
+    }
+
+    .stat-card {
+      background: white;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 19px;
+      box-shadow: var(--shadow);
+      min-width: 0;
+    }
+
+    .stat-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 10px;
+      margin-bottom: 18px;
+    }
+
+    .stat-label {
+      color: #677388;
+      font-size: 11px;
+      font-weight: 600;
+      line-height: 1.5;
+    }
+
+    .stat-icon {
+      width: 37px;
+      height: 37px;
+      border-radius: 10px;
+      display: grid;
+      place-items: center;
+      font-size: 15px;
+      flex: 0 0 auto;
+    }
+
+    .icon-blue { background: var(--blue-bg); color: #315d95; }
+    .icon-gold { background: #fbf4e3; color: #a77b18; }
+    .icon-green { background: var(--green-bg); color: var(--green); }
+    .icon-red { background: var(--red-bg); color: var(--red); }
+
+    .stat-value {
+      color: var(--navy);
+      font: 900 28px 'Merriweather', serif;
+      letter-spacing: -.7px;
+      margin-bottom: 8px;
+      overflow-wrap: anywhere;
+    }
+
+    .stat-foot {
+      color: var(--muted);
+      font-size: 10px;
+      line-height: 1.6;
+    }
+
+    .stat-foot strong { color: #344054; }
+
+    .section-heading {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      gap: 15px;
+      margin: 29px 0 13px;
+    }
+
+    .section-heading h3 {
+      color: var(--navy);
+      font: 700 15px 'Merriweather', serif;
+      margin: 0 0 6px;
+    }
+
+    .section-heading p {
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.6;
+      margin: 0;
+    }
+
+    .small-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      color: #8b6b20;
+      font-weight: 700;
+      font-size: 11px;
+      text-decoration: none;
+      white-space: nowrap;
+    }
+
+    .small-link:hover { color: var(--navy); }
+
+    .main-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.55fr) minmax(280px, .9fr);
+      gap: 19px;
+      align-items: start;
+    }
+
+    .card {
+      background: white;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+      min-width: 0;
+    }
+
+    .card-header {
+      padding: 18px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 15px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .card-header h4 {
+      color: var(--navy);
+      margin: 0 0 5px;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .card-header p {
+      color: var(--muted);
+      font-size: 10px;
+      line-height: 1.6;
+      margin: 0;
+    }
+
+    .card-body { padding: 19px 20px; }
+
+    .filters {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .filters select {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 8px 10px;
+      color: #586578;
+      background: white;
+      font-size: 10px;
+      max-width: 160px;
+    }
+
+    .table-wrap { width: 100%; overflow-x: auto; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      white-space: nowrap;
+      font-size: 11px;
+    }
+
+    th {
+      background: #fafbfc;
+      color: #7a8495;
+      font-size: 9px;
+      text-transform: uppercase;
+      letter-spacing: .7px;
+      font-weight: 700;
+      text-align: left;
+      padding: 12px 15px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    td {
+      padding: 14px 15px;
+      border-bottom: 1px solid #edf0f4;
+      color: #344054;
+    }
+
+    tbody tr:last-child td { border-bottom: 0; }
+    tbody tr:hover { background: #fbfcfe; }
+
+    .hostel-name {
+      color: var(--navy);
+      font-weight: 700;
+      font-size: 11px;
+      margin-bottom: 4px;
+    }
+
+    .subtext { color: var(--muted); font-size: 9px; }
+
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      border-radius: 20px;
+      padding: 6px 8px;
+      font-size: 9px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .status-pill.success { background: var(--green-bg); color: var(--green); }
+    .status-pill.warning { background: #fff4dc; color: #8c6512; }
+    .status-pill.danger { background: var(--red-bg); color: var(--red); }
+    .status-pill.neutral { background: #f0f2f5; color: #657186; }
+    .status-pill.info { background: var(--blue-bg); color: #315d95; }
+
+    .empty-state {
+      padding: 35px 20px;
+      text-align: center;
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.8;
+    }
+
+    .empty-state i {
+      display: block;
+      font-size: 24px;
+      color: #c0c7d2;
+      margin-bottom: 12px;
+    }
+
+    .empty-state strong {
+      display: block;
+      color: var(--navy);
+      font-size: 12px;
+      margin-bottom: 4px;
+    }
+
+    .scan-list { display: flex; flex-direction: column; }
+
+    .scan-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 14px 0;
+      border-bottom: 1px solid #edf0f4;
+    }
+
+    .scan-item:first-child { padding-top: 0; }
+    .scan-item:last-child { border-bottom: 0; padding-bottom: 0; }
+
+    .scan-icon {
+      width: 34px;
+      height: 34px;
+      flex: 0 0 auto;
+      border-radius: 9px;
+      display: grid;
+      place-items: center;
+      background: var(--blue-bg);
+      color: #315d95;
+      font-size: 13px;
+    }
+
+    .scan-icon.failed { background: var(--red-bg); color: var(--red); }
+    .scan-icon.running { background: #fff4dc; color: #8c6512; }
+
+    .scan-details { min-width: 0; flex: 1; }
+
+    .scan-details strong {
+      display: block;
+      color: var(--navy);
+      font-size: 11px;
+      margin-bottom: 5px;
+    }
+
+    .scan-details p {
+      color: var(--muted);
+      font-size: 10px;
+      line-height: 1.6;
+      margin: 0 0 7px;
+    }
+
+    .scan-meta {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .scan-meta time { color: #8993a3; font-size: 9px; }
+
+    .quick-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 13px;
+    }
+
+    .quick-card {
+      display: flex;
+      align-items: center;
+      gap: 13px;
+      padding: 17px;
+      border: 1px solid var(--line);
+      background: white;
+      border-radius: 12px;
+      text-decoration: none;
+      color: inherit;
+      box-shadow: var(--shadow);
+      transition: .2s;
+      min-width: 0;
+    }
+
+    .quick-card:hover {
+      border-color: #d7bd78;
+      transform: translateY(-2px);
+    }
+
+    .quick-icon {
+      display: grid;
+      place-items: center;
+      width: 39px;
+      height: 39px;
+      border-radius: 10px;
+      flex: 0 0 auto;
+      background: #f8f2e3;
+      color: #98721c;
+      font-size: 15px;
+    }
+
+    .quick-card strong {
+      display: block;
+      color: var(--navy);
+      font-size: 11px;
+      margin-bottom: 5px;
+      line-height: 1.4;
+    }
+
+    .quick-card span {
+      display: block;
+      color: var(--muted);
+      font-size: 9px;
+      line-height: 1.6;
+    }
+
+    .integrity-note {
+      display: flex;
+      gap: 12px;
+      padding: 15px 17px;
+      border: 1px solid #ead9aa;
+      background: #fffaf0;
+      border-radius: 11px;
+      margin-top: 22px;
+      color: #6f5928;
+      font-size: 10px;
+      line-height: 1.8;
+    }
+
+    .integrity-note i { font-size: 16px; margin-top: 2px; }
+    .integrity-note strong { color: #59420f; }
+
+    .toast {
+      position: fixed;
+      z-index: 100;
+      bottom: 25px;
+      right: 25px;
+      max-width: min(400px, calc(100vw - 40px));
+      display: flex;
+      gap: 11px;
+      align-items: flex-start;
+      padding: 15px 17px;
+      border-radius: 11px;
+      background: var(--navy);
+      color: white;
+      box-shadow: 0 10px 35px #10233f30;
+      font-size: 12px;
+      line-height: 1.6;
+      opacity: 0;
+      pointer-events: none;
+      transform: translateY(10px);
+      transition: .25s;
+    }
+
+    .toast.show { opacity: 1; transform: translateY(0); }
+    .toast i { color: var(--gold); margin-top: 2px; }
+    .toast strong { display: block; margin-bottom: 3px; }
+
+    .page-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: #07172d80;
+      z-index: 15;
+    }
+
+    @media (max-width: 1250px) {
+      .stats-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .quick-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .content { padding: 28px 22px; }
+      .topbar { padding: 0 22px; }
+    }
+
+    @media (max-width: 900px) {
+      .sidebar { transform: translateX(-100%); }
+      .sidebar.open { transform: translateX(0); }
+      .page-overlay.show { display: block; }
+      .main { margin-left: 0; }
+      .mobile-menu { display: inline-block; }
+      .topbar { height: 66px; padding: 0 18px; }
+      .main-grid { grid-template-columns: 1fr; }
+      .welcome { flex-direction: column; }
+    }
+
+    @media (max-width: 560px) {
+      .content { padding: 22px 13px 35px; }
+      .topbar { padding: 0 13px; }
+      .connection-pill { display: none; }
+      .welcome h2 { font-size: 22px; }
+      .hero { padding: 22px 19px; align-items: flex-start; flex-direction: column; }
+      .hero h3 { font-size: 17px; }
+      .stats-grid { gap: 10px; }
+      .stat-card { padding: 14px; }
+      .stat-value { font-size: 23px; }
+      .stat-icon { width: 32px; height: 32px; }
+      .quick-grid { grid-template-columns: 1fr; gap: 9px; }
+      .quick-card { padding: 13px; }
+      .section-heading { align-items: flex-start; }
+      .filters select { max-width: 130px; }
+      .card-header, .card-body { padding-left: 14px; padding-right: 14px; }
+    }
+  </style>
+</head>
+
+<body>
+  <aside class="sidebar" id="sidebar">
+    <div class="brand">
+      <div class="brand-mark"><i class="fa-solid fa-bed"></i></div>
+      <div>
+        <h1>Hostel Space Finder</h1>
+        <p>Private workspace</p>
+      </div>
+    </div>
+
+    <div class="nav-label">Workspace</div>
+    <a class="nav-link active" href="./index.html"><i class="fa-solid fa-chart-pie"></i> Dashboard</a>
+    <a class="nav-link" href="./scan.html"><i class="fa-solid fa-magnifying-glass"></i> Scan for Space</a>
+    <a class="nav-link" href="./inventory.html"><i class="fa-solid fa-building"></i> Inventory &amp; Records</a>
+    <a class="nav-link" href="./protected-spaces.html"><i class="fa-solid fa-shield-halved"></i> Protected Spaces</a>
+    <a class="nav-link" href="./history.html"><i class="fa-solid fa-clock-rotate-left"></i> Scan History</a>
+    <a class="nav-link" href="./reports.html"><i class="fa-solid fa-chart-column"></i> Reports &amp; Exports</a>
+
+    <div class="nav-label">Configuration</div>
+    <a class="nav-link" href="./settings.html"><i class="fa-solid fa-gear"></i> Settings</a>
+
+    <div class="sidebar-bottom">
+      <div class="private-note">
+        <i class="fa-solid fa-lock"></i>
+        <span>Private workspace. Availability and protection records are tracked separately.</span>
+      </div>
+    </div>
+  </aside>
+
+  <div class="page-overlay" id="pageOverlay"></div>
+
+  <main class="main">
+    <header class="topbar">
+      <div style="display:flex;align-items:center;gap:13px">
+        <button class="mobile-menu" id="mobileMenu" aria-label="Open navigation">
+          <i class="fa-solid fa-bars"></i>
+        </button>
+        <div class="breadcrumbs">Workspace <span style="margin:0 8px">/</span> <strong>Dashboard</strong></div>
+      </div>
+
+      <div class="top-actions">
+        <span class="connection-pill" id="connectionPill">
+          <i class="fa-solid fa-circle"></i>
+          <span id="connectionText">Checking connection</span>
+        </span>
+        <div class="avatar" id="userAvatar" title="Signed-in user">HS</div>
+      </div>
+    </header>
+
+    <div class="content">
+      <section class="welcome">
+        <div>
+          <div class="eyebrow">Workspace overview</div>
+          <h2 id="welcomeTitle">Welcome back</h2>
+          <p>Monitor hostel availability, review your latest scans and keep track of protected spaces.</p>
+        </div>
+        <div class="welcome-actions">
+          <button class="button button-outline" id="refreshBtn">
+            <i class="fa-solid fa-rotate"></i> Refresh dashboard
+          </button>
+          <a class="button button-primary" href="./scan.html">
+            <i class="fa-solid fa-magnifying-glass"></i> Start a scan
+          </a>
+        </div>
+      </section>
+
+      <section class="hero">
+        <div class="hero-copy">
+          <div class="hero-tag"><i class="fa-solid fa-shield-halved"></i> Private inventory workspace</div>
+          <h3>Your hostel availability at a glance.</h3>
+          <p>
+            Run controlled scans, compare saved snapshots and review spaces that may be held
+            while payments or allocations are being verified.
+          </p>
+        </div>
+        <div class="hero-actions">
+          <a class="button button-gold" href="./scan.html"><i class="fa-solid fa-play"></i> Scan for space</a>
+          <a class="button button-outline" href="./inventory.html"><i class="fa-solid fa-building"></i> Open inventory</a>
+        </div>
+      </section>
+
+      <!-- Summary metrics -->
+      <section class="stats-grid">
+        <article class="stat-card">
+          <div class="stat-top">
+            <div class="stat-label">Available bed spaces</div>
+            <div class="stat-icon icon-green"><i class="fa-solid fa-bed"></i></div>
+          </div>
+          <div class="stat-value" id="availableBeds">—</div>
+          <div class="stat-foot" id="availabilityFoot">Waiting for a successful scan</div>
+        </article>
+
+        <article class="stat-card">
+          <div class="stat-top">
+            <div class="stat-label">Hostels tracked</div>
+            <div class="stat-icon icon-blue"><i class="fa-solid fa-building"></i></div>
+          </div>
+          <div class="stat-value" id="hostelCount">—</div>
+          <div class="stat-foot" id="hostelFoot">Hostels configured in inventory</div>
+        </article>
+
+        <article class="stat-card">
+          <div class="stat-top">
+            <div class="stat-label">Successful scans</div>
+            <div class="stat-icon icon-gold"><i class="fa-solid fa-check-double"></i></div>
+          </div>
+          <div class="stat-value" id="successfulScans">—</div>
+          <div class="stat-foot" id="scanFoot">Saved scan history</div>
+        </article>
+
+        <article class="stat-card">
+          <div class="stat-top">
+            <div class="stat-label">Active protected spaces</div>
+            <div class="stat-icon icon-red"><i class="fa-solid fa-shield-halved"></i></div>
+          </div>
+          <div class="stat-value" id="protectedSpaces">—</div>
+          <div class="stat-foot" id="protectedFoot">Independently stored protection records</div>
+        </article>
+      </section>
+
+      <!-- Campus and hostel table -->
+      <div class="section-heading">
+        <div>
+          <h3>Hostel availability</h3>
+          <p>Latest successful scan per hostel. Failed scans do not replace a successful snapshot.</p>
+        </div>
+        <a class="small-link" href="./inventory.html">View full inventory <i class="fa-solid fa-arrow-right"></i></a>
+      </div>
+
+      <section class="card">
+        <div class="card-header">
+          <div>
+            <h4>Availability overview</h4>
+            <p id="availabilityUpdated">Last successful snapshot: not available</p>
+          </div>
+          <div class="filters">
+            <select id="campusFilter" aria-label="Filter by campus">
+              <option value="">All campuses</option>
+            </select>
+            <select id="hostelStatusFilter" aria-label="Filter by scan status">
+              <option value="">All statuses</option>
+              <option value="success">Successful</option>
+              <option value="partial">Partial</option>
+              <option value="failed">Failed</option>
+              <option value="unknown">Unknown</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Campus / Hostel</th>
+                <th>Rooms checked</th>
+                <th>Available beds</th>
+                <th>Protected</th>
+                <th>Latest scan</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody id="hostelTableBody">
+              <tr>
+                <td colspan="6">
+                  <div class="empty-state">
+                    <i class="fa-solid fa-spinner fa-spin"></i>
+                    <strong>Loading hostel availability</strong>
+                    Connecting to your saved inventory and scan history.
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Recent scans -->
+      <div class="section-heading">
+        <div>
+          <h3>Recent scan activity</h3>
+          <p>Review the most recent runs and their recorded outcomes.</p>
+        </div>
+        <a class="small-link" href="./history.html">View scan history <i class="fa-solid fa-arrow-right"></i></a>
+      </div>
+
+      <div class="main-grid">
+        <section class="card">
+          <div class="card-header">
+            <div>
+              <h4>Recent scans</h4>
+              <p>Most recent recorded scan attempts.</p>
+            </div>
+            <a class="small-link" href="./scan.html">New scan <i class="fa-solid fa-plus"></i></a>
+          </div>
+          <div class="card-body">
+            <div class="scan-list" id="recentScans">
+              <div class="empty-state">
+                <i class="fa-solid fa-spinner fa-spin"></i>
+                <strong>Loading scan history</strong>
+                Fetching recent scan records.
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="card">
+          <div class="card-header">
+            <div>
+              <h4>Workspace status</h4>
+              <p>Important information about your data.</p>
+            </div>
+            <i class="fa-solid fa-circle-info" style="color:#b18a2d;font-size:18px"></i>
+          </div>
+          <div class="card-body">
+            <div class="scan-list">
+              <div class="scan-item">
+                <div class="scan-icon"><i class="fa-solid fa-database"></i></div>
+                <div class="scan-details">
+                  <strong>Historical snapshots</strong>
+                  <p>Previous successful scan results should remain available for comparison.</p>
+                  <span class="status-pill info">Preserve history</span>
+                </div>
+              </div>
+
+              <div class="scan-item">
+                <div class="scan-icon"><i class="fa-solid fa-shield-halved"></i></div>
+                <div class="scan-details">
+                  <strong>Protected spaces</strong>
+                  <p>Manually recorded holds are separate from portal availability results.</p>
+                  <a class="small-link" href="./protected-spaces.html">Open register <i class="fa-solid fa-arrow-right"></i></a>
+                </div>
+              </div>
+
+              <div class="scan-item">
+                <div class="scan-icon"><i class="fa-solid fa-circle-check"></i></div>
+                <div class="scan-details">
+                  <strong>Scan integrity</strong>
+                  <p>A failed or incomplete scan must never be treated as zero available beds.</p>
+                  <span class="status-pill success">Integrity rule</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <!-- Quick access -->
+      <div class="section-heading">
+        <div>
+          <h3>Quick access</h3>
+          <p>Go directly to the tools you use most often.</p>
+        </div>
+      </div>
+
+      <section class="quick-grid">
+        <a class="quick-card" href="./scan.html">
+          <div class="quick-icon"><i class="fa-solid fa-magnifying-glass"></i></div>
+          <div>
+            <strong>Scan for space</strong>
+            <span>Check portal availability</span>
+          </div>
+        </a>
+
+        <a class="quick-card" href="./inventory.html">
+          <div class="quick-icon"><i class="fa-solid fa-list-check"></i></div>
+          <div>
+            <strong>Inventory &amp; Records</strong>
+            <span>Browse beds and student records</span>
+          </div>
+        </a>
+
+        <a class="quick-card" href="./protected-spaces.html">
+          <div class="quick-icon"><i class="fa-solid fa-shield-halved"></i></div>
+          <div>
+            <strong>Protected spaces</strong>
+            <span>Manage manually recorded holds</span>
+          </div>
+        </a>
+
+        <a class="quick-card" href="./reports.html">
+          <div class="quick-icon"><i class="fa-solid fa-chart-line"></i></div>
+          <div>
+            <strong>Reports &amp; exports</strong>
+            <span>Review trends and download reports</span>
+          </div>
+        </a>
+      </section>
+
+      <div class="integrity-note">
+        <i class="fa-solid fa-triangle-exclamation"></i>
+        <div>
+          <strong>Availability is not the same as allocation.</strong>
+          The portal scan reports what the portal currently exposes. Occupancy and protected-space records
+          may contain additional information. Verify conflicting records before treating any bed as available.
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite">
+  <i class="fa-solid fa-circle-check"></i>
+  <div>
+    <strong id="toastTitle">Notice</strong>
+    <span id="toastMessage"></span>
+  </div>
+</div>
+
+<script>
+  /*
+    BACKEND API CONTRACT
+
+    GET /api/dashboard
+      {
+        available_beds: number,
+        hostel_count: number,
+        successful_scans: number,
+        active_protected_spaces: number,
+        latest_successful_scan_at: ISO date or null,
+        last_scan_status: "success" | "partial" | "failed" | "unknown",
+        availability_note: string
+      }
+
+    GET /api/campuses
+      { items: [{ id, name }] }
+
+    GET /api/dashboard/hostels?campus_id=...
+      {
+        items: [{
+          campus_id, campus_name,
+          hostel_id, hostel_name,
+          rooms_checked, available_beds,
+          protected_spaces, latest_successful_scan_at,
+          status
+        }]
+      }
+
+    GET /api/scans?page=1&limit=5
+      {
+        items: [{
+          id, campus_name, hostel_name,
+          started_at, completed_at, status,
+          rooms_checked, available_beds, message
+        }]
+      }
+
+    GET /api/auth/me
+      { user: { display_name, initials } }
+
+    GET /api/auth/session
+      { authenticated: true }
+
+    Authentication:
+    - This page expects the backend to validate the session.
+    - If unauthenticated, redirect to login.html.
+    - Protect all private API endpoints on the server.
+    - A client-side redirect alone is not authentication.
+  */
+
+  const API_BASE = '/api';
+
+  const state = {
+    campuses: [],
+    hostels: [],
+    scans: [],
+    dashboard: null,
+    campusId: '',
+    status: ''
+  };
+
+  const $ = id => document.getElementById(id);
+
+  async function api(path, options = {}) {
+    const headers = {
+      'Accept': 'application/json',
+      ...(options.body ? { 'Content-Type': 'application/json' } : {}),
+      ...(options.headers || {})
+    };
+
+    const response = await fetch(`${API_BASE}${path}`, {
+      credentials: 'same-origin',
+      ...options,
+      headers
+    });
+
+    if (response.status === 401) {
+      window.location.replace('./login.html');
+      throw new Error('Your session has expired. Please sign in again.');
+    }
+
+    if (response.status === 204) return {};
+
+    const type = response.headers.get('content-type') || '';
+    const data = type.includes('application/json')
+      ? await response.json()
+      : { message: await response.text() };
+
+    if (!response.ok) {
+      throw new Error(data.message || data.error || `Request failed (${response.status})`);
+    }
+
+    return data;
+  }
+
+  function formatNumber(value) {
+    const number = Number(value);
+    return Number.isFinite(number) ? number.toLocaleString() : '—';
+  }
+
+  function formatDate(value) {
+    if (!value) return 'Not available';
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return 'Not available';
+
+    return date.toLocaleString(undefined, {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  }
+
+  function escapeHTML(value) {
+    return String(value ?? '').replace(/[&<>"']/g, char => ({
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
+      "'": '&#39;'
+    })[char]);
+  }
+
+  function statusClass(status) {
+    const normalized = String(status || 'unknown').toLowerCase();
+
+    if (['success', 'completed', 'succeeded'].includes(normalized)) return 'success';
+    if (['partial', 'running', 'in_progress'].includes(normalized)) return 'warning';
+    if (['failed', 'error', 'timeout', 'cancelled'].includes(normalized)) return 'danger';
+    if (['available'].includes(normalized)) return 'success';
+
+    return 'neutral';
+  }
+
+  function statusLabel(status) {
+    const normalized = String(status || 'unknown').toLowerCase();
+
+    const labels = {
+      success: 'Successful',
+      completed: 'Successful',
+      succeeded: 'Successful',
+      partial: 'Partial',
+      running: 'Running',
+      in_progress: 'Running',
+      failed: 'Failed',
+      error: 'Failed',
+      timeout: 'Timed out',
+      cancelled: 'Cancelled',
+      unknown: 'Unknown'
+    };
+
+    return labels[normalized] || normalized.replaceAll('_', ' ');
+  }
+
+  function showToast(title, message, error = false) {
+    const el = $('toast');
+    el.querySelector('i').className = error
+      ? 'fa-solid fa-circle-exclamation'
+      : 'fa-solid fa-circle-check';
+
+    $('toastTitle').textContent = title;
+    $('toastMessage').textContent = message;
+    el.classList.toggle('error', error);
+    el.classList.add('show');
+
+    clearTimeout(showToast.timer);
+    showToast.timer = setTimeout(() => el.classList.remove('show'), 4000);
+  }
+
+  function setConnection(connected) {
+    const pill = $('connectionPill');
+    pill.classList.toggle('connected', connected);
+    pill.classList.toggle('disconnected', !connected);
+    $('connectionText').textContent = connected ? 'Backend connected' : 'Backend unavailable';
+  }
+
+  function renderStats(data) {
+    $('availableBeds').textContent = formatNumber(data.available_beds);
+    $('hostelCount').textContent = formatNumber(data.hostel_count);
+    $('successfulScans').textContent = formatNumber(data.successful_scans);
+    $('protectedSpaces').textContent = formatNumber(data.active_protected_spaces);
+
+    $('availabilityFoot').textContent = data.availability_note ||
+      `Last successful scan: ${formatDate(data.latest_successful_scan_at)}`;
+
+    $('hostelFoot').textContent = 'Hostels configured in inventory';
+    $('scanFoot').textContent = 'Successful runs in saved scan history';
+    $('protectedFoot').textContent = 'Active records stored independently';
+
+    $('availabilityUpdated').textContent =
+      `Last successful snapshot: ${formatDate(data.latest_successful_scan_at)}`;
+  }
+
+  async function loadCampuses() {
+    const data = await api('/campuses');
+    state.campuses = Array.isArray(data.items) ? data.items : [];
+
+    const select = $('campusFilter');
+    const previous = state.campusId;
+
+    select.innerHTML = '<option value="">All campuses</option>';
+
+    state.campuses.forEach(campus => {
+      const option = document.createElement('option');
+      option.value = String(campus.id);
+      option.textContent = campus.name;
+      select.appendChild(option);
+    });
+
+    select.value = previous;
+  }
+
+  function renderHostels() {
+    const body = $('hostelTableBody');
+    let items = state.hostels;
+
+    if (state.campusId) {
+      items = items.filter(item => String(item.campus_id) === state.campusId);
+    }
+
+    if (state.status) {
+      items = items.filter(item => {
+        const status = String(item.status || 'unknown').toLowerCase();
+        if (state.status === 'success') return ['success', 'completed', 'succeeded'].includes(status);
+        if (state.status === 'failed') return ['failed', 'error', 'timeout', 'cancelled'].includes(status);
+        if (state.status === 'partial') return status === 'partial';
+        return ['unknown', ''].includes(status);
+      });
+    }
+
+    if (!items.length) {
+      body.innerHTML = `
+        <tr><td colspan="6">
+          <div class="empty-state">
+            <i class="fa-solid fa-building-circle-exclamation"></i>
+            <strong>No hostel results available</strong>
+            Run a scan or change your filters. No result does not mean that every bed is available.
+          </div>
+        </td></tr>`;
+      return;
+    }
+
+    body.innerHTML = items.map(item => `
+      <tr>
+        <td>
+          <div class="hostel-name">${escapeHTML(item.hostel_name || 'Unnamed hostel')}</div>
+          <div class="subtext">${escapeHTML(item.campus_name || 'Campus not recorded')}</div>
+        </td>
+        <td>${formatNumber(item.rooms_checked)}</td>
+        <td><strong>${formatNumber(item.available_beds)}</strong></td>
+        <td>${formatNumber(item.protected_spaces)}</td>
+        <td>${escapeHTML(formatDate(item.latest_successful_scan_at))}</td>
+        <td><span class="status-pill ${statusClass(item.status)}">${escapeHTML(statusLabel(item.status))}</span></td>
+      </tr>
+    `).join('');
+  }
+
+  function renderScans() {
+    const container = $('recentScans');
+
+    if (!state.scans.length) {
+      container.innerHTML = `
+        <div class="empty-state">
+          <i class="fa-solid fa-clock-rotate-left"></i>
+          <strong>No scan history yet</strong>
+          Start a scan to create your first historical record.
+          <div style="margin-top:14px">
+            <a class="button button-primary" href="./scan.html">
+              <i class="fa-solid fa-play"></i> Start first scan
+            </a>
+          </div>
+        </div>`;
+      return;
+    }
+
+    container.innerHTML = state.scans.slice(0, 5).map(scan => {
+      const normalized = String(scan.status || 'unknown').toLowerCase();
+      const failed = ['failed', 'error', 'timeout', 'cancelled'].includes(normalized);
+      const running = ['running', 'in_progress', 'queued'].includes(normalized);
+      const iconClass = failed ? 'failed' : running ? 'running' : '';
+      const icon = failed
+        ? 'fa-triangle-exclamation'
+        : running ? 'fa-spinner fa-spin' : 'fa-magnifying-glass';
+
+      const title = scan.hostel_name
+        ? `${scan.hostel_name} scan`
+        : scan.campus_name
+          ? `${scan.campus_name} scan`
+          : 'Hostel availability scan';
+
+      const description = scan.message ||
+        `${formatNumber(scan.rooms_checked)} rooms checked · ${formatNumber(scan.available_beds)} available beds`;
+
+      return `
+        <div class="scan-item">
+          <div class="scan-icon ${iconClass}"><i class="fa-solid ${icon}"></i></div>
+          <div class="scan-details">
+            <strong>${escapeHTML(title)}</strong>
+            <p>${escapeHTML(description)}</p>
+            <div class="scan-meta">
+              <span class="status-pill ${statusClass(scan.status)}">${escapeHTML(statusLabel(scan.status))}</span>
+              <time>${escapeHTML(formatDate(scan.completed_at || scan.started_at))}</time>
+            </div>
+          </div>
+        </div>`;
+    }).join('');
+  }
+
+  async function loadDashboard() {
+    const data = await api('/dashboard');
+    state.dashboard = data;
+    renderStats(data);
+  }
+
+  async function loadHostels() {
+    const params = new URLSearchParams();
+    if (state.campusId) params.set('campus_id', state.campusId);
+
+    const query = params.toString();
+    const data = await api(`/dashboard/hostels${query ? `?${query}` : ''}`);
+    state.hostels = Array.isArray(data.items) ? data.items : [];
+    renderHostels();
+  }
+
+  async function loadScans() {
+    const data = await api('/scans?page=1&limit=5');
+    state.scans = Array.isArray(data.items) ? data.items : [];
+    renderScans();
+  }
+
+  async function loadUser() {
+    try {
+      const data = await api('/auth/me');
+      const user = data.user || {};
+      if (user.display_name) $('welcomeTitle').textContent = `Welcome back, ${user.display_name}`;
+      if (user.initials) $('userAvatar').textContent = user.initials;
+    } catch (error) {
+      // The dashboard can still show its workspace heading if profile details are unavailable.
+      console.warn('Could not load profile:', error.message);
+    }
+  }
+
+  async function refreshDashboard() {
+    const button = $('refreshBtn');
+    button.disabled = true;
+    button.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Refreshing';
+
+    try {
+      const results = await Promise.allSettled([
+        loadDashboard(),
+        loadHostels(),
+        loadScans()
+      ]);
+
+      const successes = results.filter(result => result.status === 'fulfilled').length;
+      setConnection(successes > 0);
+
+      if (successes === results.length) {
+        showToast('Dashboard updated', 'The latest dashboard data has been loaded.');
+      } else if (successes > 0) {
+        showToast('Dashboard partially updated', 'Some data could not be loaded. Check the backend endpoints.', true);
+      } else {
+        showToast('Unable to refresh', 'Check that the backend is running and the API routes are available.', true);
+      }
+    } finally {
+      button.disabled = false;
+      button.innerHTML = '<i class="fa-solid fa-rotate"></i> Refresh dashboard';
+    }
+  }
+
+  $('refreshBtn').addEventListener('click', refreshDashboard);
+
+  $('campusFilter').addEventListener('change', async event => {
+    state.campusId = event.target.value;
+    try {
+      await loadHostels();
+    } catch (error) {
+      showToast('Could not filter hostels', error.message, true);
+    }
+  });
+
+  $('hostelStatusFilter').addEventListener('change', event => {
+    state.status = event.target.value;
+    renderHostels();
+  });
+
+  const sidebar = $('sidebar');
+  const overlay = $('pageOverlay');
+
+  $('mobileMenu').addEventListener('click', () => {
+    sidebar.classList.toggle('open');
+    overlay.classList.toggle('show');
+  });
+
+  function closeSidebar() {
+    sidebar.classList.remove('open');
+    overlay.classList.remove('show');
+  }
+
+  overlay.addEventListener('click', closeSidebar);
+
+  document.querySelectorAll('.sidebar .nav-link').forEach(link => {
+    link.addEventListener('click', closeSidebar);
+  });
+
+  async function initialise() {
+    // This check is only a user-experience convenience; every private API
+    // endpoint must also validate the session on the server.
+    try {
+      const session = await api('/auth/session');
+      if (session.authenticated === false) {
+        window.location.replace('./login.html');
+        return;
+      }
+    } catch (error) {
+      if (error.message.includes('session has expired')) return;
+      // Allow the dashboard shell to render if authentication routes have
+      // not yet been implemented. The backend must still protect private APIs.
+      console.warn('Session check unavailable:', error.message);
+    }
+
+    await loadUser();
+
+    try {
+      await loadCampuses();
+    } catch (error) {
+      console.warn('Campus list unavailable:', error.message);
+    }
+
+    await refreshDashboard();
+  }
+
+  initialise();
+</script>
+</body>
+</html>

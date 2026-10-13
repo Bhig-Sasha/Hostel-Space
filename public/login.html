@@ -1,0 +1,889 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#10233f">
+  <title>Sign In | Hostel Inventory</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Merriweather:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
+
+  <style>
+    :root {
+      --navy: #10233f;
+      --navy-light: #1a3558;
+      --gold: #d6ad4b;
+      --paper: #f5f1e8;
+      --white: #ffffff;
+      --text: #17253a;
+      --muted: #718096;
+      --border: #e2e5e9;
+      --danger: #b42318;
+      --success: #167647;
+      --radius: 18px;
+      --shadow: 0 24px 70px rgba(16, 35, 63, .14);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      min-height: 100dvh;
+      font-family: "Inter", sans-serif;
+      color: var(--text);
+      background: var(--paper);
+    }
+
+    button, input {
+      font: inherit;
+    }
+
+    button, a {
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .page {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(400px, .85fr);
+      min-height: 100vh;
+      min-height: 100dvh;
+    }
+
+    /* Branding panel */
+    .brand-panel {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      overflow: hidden;
+      padding: clamp(32px, 5vw, 70px);
+      color: var(--white);
+      background:
+        radial-gradient(circle at 85% 20%, rgba(214,173,75,.15), transparent 30%),
+        linear-gradient(145deg, #10233f, #0b192d);
+    }
+
+    .brand-panel::before,
+    .brand-panel::after {
+      position: absolute;
+      content: "";
+      pointer-events: none;
+      border: 1px solid rgba(214,173,75,.16);
+      border-radius: 50%;
+    }
+
+    .brand-panel::before {
+      width: 520px;
+      height: 520px;
+      right: -240px;
+      bottom: -160px;
+    }
+
+    .brand-panel::after {
+      width: 370px;
+      height: 370px;
+      right: -165px;
+      bottom: -85px;
+    }
+
+    .brand,
+    .brand-content,
+    .brand-footer {
+      position: relative;
+      z-index: 1;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 13px;
+    }
+
+    .brand-logo {
+      display: grid;
+      place-items: center;
+      width: 48px;
+      height: 48px;
+      flex-shrink: 0;
+      color: var(--navy);
+      background: var(--gold);
+      border-radius: 14px;
+      font-size: 21px;
+    }
+
+    .brand-name {
+      margin: 0;
+      font-size: 15px;
+      font-weight: 800;
+      letter-spacing: -.3px;
+    }
+
+    .brand-subtitle {
+      margin: 5px 0 0;
+      color: #b8c5d6;
+      font-size: 11px;
+      letter-spacing: 1.3px;
+      text-transform: uppercase;
+    }
+
+    .brand-content {
+      max-width: 560px;
+      margin: 60px 0;
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 9px;
+      margin-bottom: 22px;
+      color: var(--gold);
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 1.8px;
+      text-transform: uppercase;
+    }
+
+    .eyebrow::before {
+      width: 25px;
+      height: 2px;
+      content: "";
+      background: var(--gold);
+    }
+
+    .brand-content h1 {
+      max-width: 520px;
+      margin: 0;
+      font-family: "Merriweather", serif;
+      font-size: clamp(34px, 4.2vw, 58px);
+      line-height: 1.24;
+      letter-spacing: -1.5px;
+    }
+
+    .brand-content h1 span {
+      color: var(--gold);
+    }
+
+    .brand-description {
+      max-width: 430px;
+      margin: 24px 0 0;
+      color: #c1ccda;
+      font-size: 14px;
+      line-height: 1.9;
+    }
+
+    .feature-list {
+      display: grid;
+      gap: 17px;
+      margin-top: 40px;
+    }
+
+    .feature {
+      display: flex;
+      align-items: center;
+      gap: 13px;
+      color: #e1e8f0;
+      font-size: 13px;
+    }
+
+    .feature-icon {
+      display: grid;
+      place-items: center;
+      width: 34px;
+      height: 34px;
+      flex-shrink: 0;
+      color: var(--gold);
+      background: rgba(255,255,255,.07);
+      border: 1px solid rgba(255,255,255,.09);
+      border-radius: 10px;
+    }
+
+    .brand-footer {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      gap: 12px;
+      color: #9fadc0;
+      font-size: 11px;
+      line-height: 1.7;
+    }
+
+    /* Login panel */
+    .login-panel {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: clamp(24px, 5vw, 72px);
+      background: var(--paper);
+    }
+
+    .login-container {
+      width: 100%;
+      max-width: 420px;
+    }
+
+    .mobile-brand {
+      display: none;
+    }
+
+    .login-heading {
+      margin-bottom: 32px;
+    }
+
+    .login-heading .welcome {
+      margin: 0 0 12px;
+      color: #8b6a20;
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 1.6px;
+      text-transform: uppercase;
+    }
+
+    .login-heading h2 {
+      margin: 0;
+      color: var(--navy);
+      font-family: "Merriweather", serif;
+      font-size: clamp(27px, 3vw, 34px);
+      line-height: 1.35;
+      letter-spacing: -.7px;
+    }
+
+    .login-heading p {
+      margin: 13px 0 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.8;
+    }
+
+    .form-group {
+      margin-bottom: 21px;
+    }
+
+    .label-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 9px;
+    }
+
+    .label-row label {
+      color: #26364c;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .field {
+      position: relative;
+    }
+
+    .field-icon {
+      position: absolute;
+      top: 50%;
+      left: 15px;
+      color: #8a96a7;
+      font-size: 14px;
+      transform: translateY(-50%);
+      pointer-events: none;
+    }
+
+    .field input {
+      width: 100%;
+      min-height: 51px;
+      padding: 14px 46px;
+      color: var(--text);
+      background: var(--white);
+      border: 1px solid #dce1e7;
+      border-radius: 11px;
+      outline: none;
+      font-size: 13px;
+      transition: border-color .2s, box-shadow .2s;
+    }
+
+    .field input::placeholder {
+      color: #a2acb9;
+    }
+
+    .field input:focus {
+      border-color: var(--gold);
+      box-shadow: 0 0 0 4px rgba(214,173,75,.15);
+    }
+
+    .password-toggle {
+      position: absolute;
+      top: 50%;
+      right: 12px;
+      display: grid;
+      place-items: center;
+      width: 30px;
+      height: 30px;
+      color: #738096;
+      background: transparent;
+      border: 0;
+      border-radius: 7px;
+      cursor: pointer;
+      transform: translateY(-50%);
+    }
+
+    .password-toggle:hover {
+      color: var(--navy);
+      background: #f0f2f5;
+    }
+
+    .form-options {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin: 3px 0 25px;
+    }
+
+    .remember {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      color: #59677b;
+      font-size: 12px;
+      cursor: pointer;
+    }
+
+    .remember input {
+      width: 15px;
+      height: 15px;
+      margin: 0;
+      accent-color: var(--navy);
+    }
+
+    .text-link {
+      color: #8b6a20;
+      font-size: 12px;
+      font-weight: 700;
+      text-decoration: none;
+    }
+
+    .text-link:hover {
+      text-decoration: underline;
+    }
+
+    .sign-in-button {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      width: 100%;
+      min-height: 52px;
+      color: var(--navy);
+      background: var(--gold);
+      border: 1px solid #cba23e;
+      border-radius: 11px;
+      font-size: 13px;
+      font-weight: 800;
+      cursor: pointer;
+      transition: background .2s, transform .2s, box-shadow .2s;
+    }
+
+    .sign-in-button:hover {
+      background: #e1bd65;
+      box-shadow: 0 8px 20px rgba(16,35,63,.12);
+    }
+
+    .sign-in-button:active {
+      transform: translateY(1px);
+    }
+
+    .sign-in-button:disabled {
+      cursor: wait;
+      opacity: .7;
+    }
+
+    .message {
+      display: none;
+      align-items: flex-start;
+      gap: 9px;
+      margin: 0 0 20px;
+      padding: 12px 13px;
+      border: 1px solid transparent;
+      border-radius: 10px;
+      font-size: 12px;
+      line-height: 1.6;
+    }
+
+    .message.show {
+      display: flex;
+    }
+
+    .message.error {
+      color: var(--danger);
+      background: #fff0ef;
+      border-color: #f3cbc7;
+    }
+
+    .message.success {
+      color: var(--success);
+      background: #eaf7ef;
+      border-color: #c7ead4;
+    }
+
+    .message.info {
+      color: #385a80;
+      background: #edf4fc;
+      border-color: #d1e1f4;
+    }
+
+    .security-note {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      margin-top: 27px;
+      padding: 15px;
+      background: rgba(255,255,255,.65);
+      border: 1px solid #e7e2d7;
+      border-radius: 12px;
+    }
+
+    .security-note i {
+      margin-top: 2px;
+      color: #8b6a20;
+      font-size: 15px;
+    }
+
+    .security-note strong {
+      display: block;
+      margin-bottom: 5px;
+      color: #34445a;
+      font-size: 11px;
+    }
+
+    .security-note p {
+      margin: 0;
+      color: #788497;
+      font-size: 11px;
+      line-height: 1.7;
+    }
+
+    .login-bottom {
+      margin-top: 32px;
+      color: #8993a1;
+      font-size: 10px;
+      line-height: 1.8;
+      text-align: center;
+    }
+
+    .login-bottom strong {
+      color: #5c6879;
+    }
+
+    @media (max-width: 900px) {
+      .page {
+        grid-template-columns: minmax(0, .9fr) minmax(360px, 1.1fr);
+      }
+
+      .brand-panel {
+        padding: 32px;
+      }
+
+      .login-panel {
+        padding: 32px;
+      }
+
+      .brand-content h1 {
+        font-size: 39px;
+      }
+    }
+
+    @media (max-width: 700px) {
+      .page {
+        display: block;
+      }
+
+      .brand-panel {
+        display: none;
+      }
+
+      .login-panel {
+        min-height: 100vh;
+        min-height: 100dvh;
+        padding: 30px 23px;
+      }
+
+      .login-container {
+        max-width: 430px;
+      }
+
+      .mobile-brand {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 46px;
+      }
+
+      .mobile-brand .brand-logo {
+        width: 44px;
+        height: 44px;
+      }
+
+      .mobile-brand .brand-name {
+        color: var(--navy);
+      }
+
+      .mobile-brand .brand-subtitle {
+        color: #7c8797;
+      }
+
+      .login-heading {
+        margin-bottom: 27px;
+      }
+
+      .login-heading h2 {
+        font-size: 29px;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        transition: none !important;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <main class="page">
+
+    <section class="brand-panel" aria-label="Application introduction">
+      <div class="brand">
+        <div class="brand-logo">
+          <i class="fa-solid fa-building-circle-check"></i>
+        </div>
+        <div>
+          <p class="brand-name">Hostel Inventory</p>
+          <p class="brand-subtitle">Private Management Workspace</p>
+        </div>
+      </div>
+
+      <div class="brand-content">
+        <div class="eyebrow">Your workspace, organised</div>
+        <h1>
+          Every space.<br>
+          Every record.<br>
+          <span>One clear view.</span>
+        </h1>
+
+        <p class="brand-description">
+          A central workspace for checking hostel availability,
+          maintaining student records, tracking protected bed spaces
+          and reviewing historical scans.
+        </p>
+
+        <div class="feature-list">
+          <div class="feature">
+            <span class="feature-icon"><i class="fa-solid fa-bed"></i></span>
+            <span>Hostel, room and bed-space inventory</span>
+          </div>
+          <div class="feature">
+            <span class="feature-icon"><i class="fa-solid fa-user-graduate"></i></span>
+            <span>Student records and allocation lookup</span>
+          </div>
+          <div class="feature">
+            <span class="feature-icon"><i class="fa-solid fa-clock-rotate-left"></i></span>
+            <span>Scan history and protected-space tracking</span>
+          </div>
+        </div>
+      </div>
+
+      <footer class="brand-footer">
+        <span>Private workspace · Personal use</span>
+        <span>Inventory &amp; Records</span>
+      </footer>
+    </section>
+
+    <section class="login-panel">
+      <div class="login-container">
+
+        <div class="mobile-brand">
+          <div class="brand-logo">
+            <i class="fa-solid fa-building-circle-check"></i>
+          </div>
+          <div>
+            <p class="brand-name">Hostel Inventory</p>
+            <p class="brand-subtitle">Private Management Workspace</p>
+          </div>
+        </div>
+
+        <header class="login-heading">
+          <p class="welcome">Welcome back</p>
+          <h2>Sign in to your workspace</h2>
+          <p>Enter your application credentials to continue to your dashboard.</p>
+        </header>
+
+        <div id="message" class="message" role="status" aria-live="polite">
+          <i id="messageIcon" class="fa-solid fa-circle-info"></i>
+          <span id="messageText"></span>
+        </div>
+
+        <form id="loginForm" autocomplete="on">
+          <div class="form-group">
+            <div class="label-row">
+              <label for="username">Username or email</label>
+            </div>
+            <div class="field">
+              <i class="field-icon fa-regular fa-user"></i>
+              <input
+                id="username"
+                name="username"
+                type="text"
+                placeholder="Enter your username"
+                autocomplete="username"
+                required
+                maxlength="254"
+              >
+            </div>
+          </div>
+
+          <div class="form-group">
+            <div class="label-row">
+              <label for="password">Password</label>
+            </div>
+            <div class="field">
+              <i class="field-icon fa-solid fa-lock"></i>
+              <input
+                id="password"
+                name="password"
+                type="password"
+                placeholder="Enter your password"
+                autocomplete="current-password"
+                required
+                maxlength="1024"
+              >
+              <button
+                class="password-toggle"
+                id="togglePassword"
+                type="button"
+                aria-label="Show password"
+                aria-pressed="false"
+              >
+                <i class="fa-regular fa-eye" id="eyeIcon"></i>
+              </button>
+            </div>
+          </div>
+
+          <div class="form-options">
+            <label class="remember">
+              <input id="rememberUsername" type="checkbox">
+              <span>Remember username</span>
+            </label>
+            <a class="text-link" href="mailto:YOUR_SUPPORT_EMAIL">
+              Need help signing in?
+            </a>
+          </div>
+
+          <button class="sign-in-button" id="signInButton" type="submit">
+            <span id="buttonText">Sign in securely</span>
+            <i id="buttonIcon" class="fa-solid fa-arrow-right"></i>
+          </button>
+        </form>
+
+        <div class="security-note">
+          <i class="fa-solid fa-shield-halved"></i>
+          <div>
+            <strong>Your workspace security matters</strong>
+            <p>
+              Your application password is verified by the server.
+              This page does not save your password in browser storage.
+            </p>
+          </div>
+        </div>
+
+        <footer class="login-bottom">
+          <strong>Hostel Inventory &amp; Student Records</strong><br>
+          Private management workspace. Not an official BIU portal.
+        </footer>
+      </div>
+    </section>
+
+  </main>
+
+  <script>
+    "use strict";
+
+    /*
+      BACKEND REQUIRED
+
+      POST /api/auth/login
+      Request:
+        { "username": "...", "password": "..." }
+
+      Expected successful response:
+        { "authenticated": true }
+
+      The server should establish a secure session cookie using:
+        HttpOnly, Secure (in production), SameSite, and an appropriate
+        session expiration policy.
+
+      GET /api/auth/session
+      Expected response:
+        { "authenticated": true }
+
+      Do not replace this with a frontend-only password check.
+      Do not store passwords or session tokens in localStorage.
+    */
+
+    const API_BASE = "/api";
+
+    const form = document.getElementById("loginForm");
+    const usernameInput = document.getElementById("username");
+    const passwordInput = document.getElementById("password");
+    const rememberInput = document.getElementById("rememberUsername");
+    const signInButton = document.getElementById("signInButton");
+    const buttonText = document.getElementById("buttonText");
+    const buttonIcon = document.getElementById("buttonIcon");
+    const message = document.getElementById("message");
+    const messageText = document.getElementById("messageText");
+    const messageIcon = document.getElementById("messageIcon");
+
+    function showMessage(text, type = "info") {
+      message.className = "message show " + type;
+      messageText.textContent = text;
+
+      const icons = {
+        error: "fa-solid fa-circle-exclamation",
+        success: "fa-solid fa-circle-check",
+        info: "fa-solid fa-circle-info"
+      };
+
+      messageIcon.className = icons[type] || icons.info;
+    }
+
+    function setLoading(loading) {
+      signInButton.disabled = loading;
+      buttonText.textContent = loading ? "Signing you in..." : "Sign in securely";
+      buttonIcon.className = loading
+        ? "fa-solid fa-spinner fa-spin"
+        : "fa-solid fa-arrow-right";
+    }
+
+    function loadRememberedUsername() {
+      try {
+        const saved = sessionStorage.getItem("hostel_remembered_username");
+
+        if (saved) {
+          usernameInput.value = saved;
+          rememberInput.checked = true;
+          passwordInput.focus();
+        }
+      } catch {
+        // Storage may be disabled. Sign-in still works.
+      }
+    }
+
+    document.getElementById("togglePassword").addEventListener("click", () => {
+      const showing = passwordInput.type === "text";
+      passwordInput.type = showing ? "password" : "text";
+
+      document.getElementById("eyeIcon").className = showing
+        ? "fa-regular fa-eye"
+        : "fa-regular fa-eye-slash";
+
+      const toggle = document.getElementById("togglePassword");
+      toggle.setAttribute("aria-label", showing ? "Show password" : "Hide password");
+      toggle.setAttribute("aria-pressed", String(!showing));
+    });
+
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+
+      const username = usernameInput.value.trim();
+      const password = passwordInput.value;
+
+      if (!username || !password) {
+        showMessage("Enter both your username and password.", "error");
+        return;
+      }
+
+      setLoading(true);
+      message.className = "message";
+      
+      try {
+        const response = await fetch(`${API_BASE}/auth/login`, {
+          method: "POST",
+          credentials: "same-origin",
+          headers: {
+            "Content-Type": "application/json",
+            "Accept": "application/json"
+          },
+          body: JSON.stringify({ username, password })
+        });
+
+        const data = await response.json().catch(() => ({}));
+
+        if (!response.ok || data.authenticated !== true) {
+          if (response.status === 429) {
+            throw new Error("Too many sign-in attempts. Please wait before trying again.");
+          }
+
+          if (response.status >= 500) {
+            throw new Error("The sign-in service is temporarily unavailable.");
+          }
+
+          throw new Error(data.message || "Invalid username or password.");
+        }
+
+        try {
+          if (rememberInput.checked) {
+            sessionStorage.setItem("hostel_remembered_username", username);
+          } else {
+            sessionStorage.removeItem("hostel_remembered_username");
+          }
+        } catch {
+          // A browser storage restriction must not block authentication.
+        }
+
+        passwordInput.value = "";
+        showMessage("Sign-in successful. Opening your dashboard...", "success");
+
+        window.location.replace("index.html");
+      } catch (error) {
+        if (error instanceof TypeError) {
+          showMessage(
+            "Cannot reach the application server. Start the backend and try again.",
+            "error"
+          );
+        } else {
+          showMessage(error.message || "Unable to sign in. Please try again.", "error");
+        }
+      } finally {
+        setLoading(false);
+      }
+    });
+
+    async function checkExistingSession() {
+      try {
+        const response = await fetch(`${API_BASE}/auth/session`, {
+          credentials: "same-origin",
+          headers: { "Accept": "application/json" }
+        });
+
+        if (!response.ok) return;
+
+        const data = await response.json();
+
+        if (data.authenticated === true) {
+          window.location.replace("index.html");
+        }
+      } catch {
+        // Keep the sign-in page visible if the backend is unavailable.
+      }
+    }
+
+    loadRememberedUsername();
+    checkExistingSession();
+  </script>
+</body>
+</html>

@@ -1,0 +1,1835 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#10233f">
+  <title>Hostel Space Finder · Settings</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Merriweather:wght@700;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
+
+  <style>
+    :root {
+      --navy: #10233f;
+      --navy-light: #1a3558;
+      --gold: #d6ad4b;
+      --paper: #f5f1e8;
+      --white: #ffffff;
+      --ink: #1d2939;
+      --muted: #778195;
+      --line: #e5e8ee;
+      --green: #18794e;
+      --green-bg: #e9f7ef;
+      --red: #b42318;
+      --red-bg: #fef0ee;
+      --blue-bg: #edf3fb;
+      --shadow: 0 5px 20px rgba(16,35,63,.055);
+      --radius: 15px;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: #f7f8fa;
+      color: var(--ink);
+      font-family: 'Inter', sans-serif;
+      font-size: 14px;
+    }
+
+    button, input, select {
+      font: inherit;
+    }
+
+    button { cursor: pointer; }
+
+    .app { min-height: 100vh; }
+
+    .sidebar {
+      position: fixed;
+      inset: 0 auto 0 0;
+      width: 254px;
+      padding: 25px 17px;
+      background: var(--navy);
+      color: white;
+      display: flex;
+      flex-direction: column;
+      z-index: 20;
+      overflow-y: auto;
+      transition: transform .25s ease;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 0 9px 28px;
+      border-bottom: 1px solid rgba(255,255,255,.12);
+    }
+
+    .brand-mark {
+      display: grid;
+      place-items: center;
+      width: 43px;
+      height: 43px;
+      border-radius: 12px;
+      background: var(--gold);
+      color: var(--navy);
+      font-size: 19px;
+    }
+
+    .brand h1 {
+      font: 900 15px 'Merriweather', serif;
+      margin: 0 0 5px;
+      letter-spacing: -.3px;
+    }
+
+    .brand p {
+      margin: 0;
+      color: #b9c4d5;
+      font-size: 10px;
+      letter-spacing: 1.2px;
+      text-transform: uppercase;
+    }
+
+    .nav-label {
+      padding: 25px 12px 10px;
+      color: #8fa0b9;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 1.4px;
+      text-transform: uppercase;
+    }
+
+    .nav-link {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 13px;
+      margin: 2px 0;
+      border-radius: 9px;
+      text-decoration: none;
+      color: #c6d0df;
+      font-size: 12px;
+      font-weight: 500;
+      transition: .2s;
+    }
+
+    .nav-link i {
+      width: 17px;
+      text-align: center;
+      font-size: 14px;
+    }
+
+    .nav-link:hover {
+      background: rgba(255,255,255,.07);
+      color: white;
+    }
+
+    .nav-link.active {
+      background: rgba(214,173,75,.15);
+      color: #f1d68d;
+      border-left: 3px solid var(--gold);
+      padding-left: 10px;
+    }
+
+    .sidebar-bottom {
+      margin-top: auto;
+      padding: 19px 10px 0;
+      border-top: 1px solid rgba(255,255,255,.12);
+    }
+
+    .local-note {
+      display: flex;
+      gap: 9px;
+      color: #c6d0df;
+      font-size: 11px;
+      line-height: 1.7;
+    }
+
+    .local-note i { color: var(--gold); margin-top: 3px; }
+
+    .main {
+      margin-left: 254px;
+      min-height: 100vh;
+    }
+
+    .topbar {
+      height: 76px;
+      background: white;
+      border-bottom: 1px solid var(--line);
+      padding: 0 34px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 15px;
+    }
+
+    .breadcrumbs {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .breadcrumbs strong { color: var(--navy); }
+
+    .top-actions {
+      display: flex;
+      align-items: center;
+      gap: 13px;
+    }
+
+    .environment {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 8px 10px;
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      color: #586578;
+      font-size: 11px;
+      background: white;
+    }
+
+    .environment i { color: var(--green); font-size: 8px; }
+
+    .avatar {
+      width: 37px;
+      height: 37px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      background: var(--navy);
+      color: var(--gold);
+      font-weight: 700;
+      font-size: 12px;
+    }
+
+    .mobile-menu {
+      display: none;
+      border: 0;
+      background: transparent;
+      color: var(--navy);
+      font-size: 20px;
+    }
+
+    .content {
+      max-width: 1400px;
+      padding: 32px 34px 48px;
+      margin: auto;
+    }
+
+    .page-heading {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 18px;
+      margin-bottom: 25px;
+    }
+
+    .eyebrow {
+      color: #8b6b20;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 1.6px;
+      text-transform: uppercase;
+      margin-bottom: 9px;
+    }
+
+    .page-heading h2 {
+      font: 900 25px 'Merriweather', serif;
+      color: var(--navy);
+      letter-spacing: -.6px;
+      margin: 0 0 9px;
+    }
+
+    .page-heading p {
+      color: var(--muted);
+      margin: 0;
+      line-height: 1.7;
+      font-size: 12px;
+    }
+
+    .button {
+      border: 1px solid transparent;
+      border-radius: 9px;
+      padding: 10px 14px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      font-weight: 600;
+      font-size: 12px;
+      transition: .2s;
+      white-space: nowrap;
+    }
+
+    .button-primary {
+      background: var(--navy);
+      color: white;
+    }
+
+    .button-primary:hover { background: var(--navy-light); }
+
+    .button-gold {
+      background: var(--gold);
+      color: var(--navy);
+    }
+
+    .button-outline {
+      border-color: var(--line);
+      color: var(--navy);
+      background: white;
+    }
+
+    .button-outline:hover { background: #f6f8fb; }
+
+    .button-danger {
+      color: var(--red);
+      border-color: #f0c7c2;
+      background: white;
+    }
+
+    .button:disabled {
+      opacity: .55;
+      cursor: not-allowed;
+    }
+
+    .settings-layout {
+      display: grid;
+      grid-template-columns: 215px minmax(0, 1fr);
+      gap: 22px;
+      align-items: start;
+    }
+
+    .settings-nav {
+      background: white;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 10px;
+      box-shadow: var(--shadow);
+      position: sticky;
+      top: 20px;
+    }
+
+    .settings-nav button {
+      display: flex;
+      align-items: center;
+      gap: 11px;
+      width: 100%;
+      padding: 12px 11px;
+      border: 0;
+      background: transparent;
+      color: #647086;
+      text-align: left;
+      border-radius: 9px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+
+    .settings-nav button i {
+      width: 17px;
+      text-align: center;
+      font-size: 14px;
+    }
+
+    .settings-nav button:hover {
+      background: #f6f8fb;
+      color: var(--navy);
+    }
+
+    .settings-nav button.active {
+      color: var(--navy);
+      background: #f8f2e3;
+    }
+
+    .settings-nav button.active i { color: #a77b18; }
+
+    .settings-content {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      min-width: 0;
+    }
+
+    .settings-section { scroll-margin-top: 20px; }
+
+    .section-heading {
+      margin: 0 0 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .section-heading h3 {
+      color: var(--navy);
+      font: 700 15px 'Merriweather', serif;
+      margin: 0 0 5px;
+    }
+
+    .section-heading p {
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.6;
+      margin: 0;
+    }
+
+    .card {
+      background: white;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 15px;
+      padding: 19px 21px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .card-header h4 {
+      color: var(--navy);
+      margin: 0 0 5px;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .card-header p {
+      color: var(--muted);
+      font-size: 11px;
+      margin: 0;
+      line-height: 1.6;
+    }
+
+    .card-body { padding: 21px; }
+
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      border-radius: 20px;
+      padding: 6px 9px;
+      font-size: 10px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .status-pill.success {
+      background: var(--green-bg);
+      color: var(--green);
+    }
+
+    .status-pill.neutral {
+      background: #f0f2f5;
+      color: #657186;
+    }
+
+    .status-pill.warning {
+      background: #fff4dc;
+      color: #8c6512;
+    }
+
+    .status-pill.danger {
+      background: var(--red-bg);
+      color: var(--red);
+    }
+
+    .notice {
+      display: flex;
+      gap: 12px;
+      padding: 14px;
+      border: 1px solid #ead9aa;
+      background: #fffaf0;
+      border-radius: 10px;
+      margin-bottom: 19px;
+      color: #6f5928;
+      font-size: 11px;
+      line-height: 1.7;
+    }
+
+    .notice i { margin-top: 2px; font-size: 15px; }
+
+    .notice strong { color: #59420f; }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 18px;
+    }
+
+    .field { min-width: 0; }
+
+    .field.full { grid-column: 1 / -1; }
+
+    .field label {
+      display: block;
+      color: #354157;
+      font-size: 11px;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+
+    .field input,
+    .field select {
+      width: 100%;
+      min-width: 0;
+      min-height: 42px;
+      border: 1px solid #dfe4eb;
+      background: white;
+      color: var(--ink);
+      border-radius: 8px;
+      padding: 10px 12px;
+      outline: none;
+      font-size: 12px;
+    }
+
+    .field input:focus,
+    .field select:focus {
+      border-color: #b89a50;
+      box-shadow: 0 0 0 3px rgba(214,173,75,.13);
+    }
+
+    .field input::placeholder { color: #a0a8b5; }
+
+    .field small {
+      display: block;
+      color: var(--muted);
+      font-size: 10px;
+      line-height: 1.6;
+      margin-top: 7px;
+    }
+
+    .input-with-action { display: flex; gap: 8px; }
+
+    .input-with-action input { flex: 1; min-width: 0; }
+
+    .icon-button {
+      flex: 0 0 42px;
+      height: 42px;
+      display: grid;
+      place-items: center;
+      border: 1px solid #dfe4eb;
+      border-radius: 8px;
+      background: white;
+      color: #68758a;
+    }
+
+    .icon-button:hover { background: #f5f7fa; }
+
+    .form-actions {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 10px;
+      margin-top: 21px;
+      padding-top: 18px;
+      border-top: 1px solid var(--line);
+      flex-wrap: wrap;
+    }
+
+    .subsection {
+      border-top: 1px solid var(--line);
+      margin-top: 21px;
+      padding-top: 20px;
+    }
+
+    .subsection h5 {
+      margin: 0 0 15px;
+      font-size: 11px;
+      color: var(--navy);
+    }
+
+    .setting-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+      padding: 16px 0;
+      border-bottom: 1px solid #edf0f4;
+    }
+
+    .setting-row:first-child { padding-top: 0; }
+    .setting-row:last-child { border-bottom: 0; padding-bottom: 0; }
+
+    .setting-row .setting-title {
+      color: #344054;
+      font-size: 12px;
+      font-weight: 600;
+      margin-bottom: 5px;
+    }
+
+    .setting-row p {
+      color: var(--muted);
+      font-size: 10px;
+      line-height: 1.6;
+      margin: 0;
+      max-width: 470px;
+    }
+
+    .setting-control { flex: 0 0 auto; }
+
+    .setting-control select,
+    .setting-control input[type="number"] {
+      width: 120px;
+      padding: 8px 10px;
+      border: 1px solid #dfe4eb;
+      border-radius: 8px;
+      background: white;
+      color: var(--ink);
+      font-size: 11px;
+    }
+
+    .switch {
+      position: relative;
+      display: inline-flex;
+      width: 40px;
+      height: 23px;
+      flex: 0 0 auto;
+    }
+
+    .switch input {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      opacity: 0;
+    }
+
+    .switch-track {
+      position: absolute;
+      inset: 0;
+      background: #d5dae2;
+      border-radius: 20px;
+      transition: .2s;
+      cursor: pointer;
+    }
+
+    .switch-track::before {
+      content: "";
+      position: absolute;
+      left: 3px;
+      top: 3px;
+      width: 17px;
+      height: 17px;
+      border-radius: 50%;
+      background: white;
+      box-shadow: 0 1px 3px #0002;
+      transition: .2s;
+    }
+
+    .switch input:checked + .switch-track { background: var(--navy); }
+
+    .switch input:checked + .switch-track::before {
+      transform: translateX(17px);
+    }
+
+    .switch input:focus-visible + .switch-track {
+      outline: 2px solid var(--gold);
+      outline-offset: 3px;
+    }
+
+    .system-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .system-item {
+      padding: 15px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      min-width: 0;
+    }
+
+    .system-item .label {
+      color: var(--muted);
+      font-size: 10px;
+      margin-bottom: 8px;
+    }
+
+    .system-item .value {
+      color: var(--navy);
+      font-size: 13px;
+      font-weight: 700;
+      overflow-wrap: anywhere;
+    }
+
+    .system-item .detail {
+      color: var(--muted);
+      font-size: 10px;
+      margin-top: 6px;
+      line-height: 1.6;
+    }
+
+    .backup-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      padding: 16px 0;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .backup-row:last-child { border-bottom: 0; padding-bottom: 0; }
+
+    .backup-row strong {
+      display: block;
+      color: #344054;
+      font-size: 12px;
+      margin-bottom: 5px;
+    }
+
+    .backup-row p {
+      color: var(--muted);
+      font-size: 10px;
+      line-height: 1.6;
+      margin: 0;
+    }
+
+    .danger-zone {
+      border-color: #f0d2ce;
+    }
+
+    .danger-zone .card-header { background: #fff9f8; }
+
+    .danger-zone .card-header h4 { color: var(--red); }
+
+    .footer-note {
+      color: var(--muted);
+      font-size: 10px;
+      line-height: 1.7;
+      text-align: center;
+      padding: 5px 15px 0;
+    }
+
+    .toast {
+      position: fixed;
+      z-index: 100;
+      bottom: 25px;
+      right: 25px;
+      max-width: min(400px, calc(100vw - 40px));
+      display: flex;
+      gap: 11px;
+      align-items: flex-start;
+      padding: 15px 17px;
+      border-radius: 11px;
+      background: var(--navy);
+      color: white;
+      box-shadow: 0 10px 35px #10233f30;
+      font-size: 12px;
+      line-height: 1.6;
+      opacity: 0;
+      pointer-events: none;
+      transform: translateY(10px);
+      transition: .25s;
+    }
+
+    .toast.show {
+      opacity: 1;
+      pointer-events: auto;
+      transform: translateY(0);
+    }
+
+    .toast i { color: var(--gold); margin-top: 2px; }
+
+    .toast.error i { color: #ffaaa2; }
+
+    .toast-text strong { display: block; margin-bottom: 3px; }
+
+    .page-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: #07172d80;
+      z-index: 15;
+    }
+
+    @media (max-width: 1100px) {
+      .settings-layout { grid-template-columns: 185px minmax(0, 1fr); gap: 15px; }
+      .content { padding: 28px 22px; }
+      .topbar { padding: 0 22px; }
+    }
+
+    @media (max-width: 800px) {
+      .sidebar { transform: translateX(-100%); }
+      .sidebar.open { transform: translateX(0); }
+      .page-overlay.show { display: block; }
+      .main { margin-left: 0; }
+      .mobile-menu { display: inline-block; }
+      .topbar { height: 66px; padding: 0 18px; }
+      .content { padding: 24px 16px 40px; }
+      .settings-layout { grid-template-columns: 1fr; }
+      .settings-nav {
+        position: static;
+        display: flex;
+        gap: 5px;
+        overflow-x: auto;
+        padding: 8px;
+      }
+      .settings-nav button {
+        flex: 0 0 auto;
+        width: auto;
+        padding: 10px 12px;
+      }
+      .settings-nav button span { white-space: nowrap; }
+      .settings-nav button.active { background: #f8f2e3; }
+      .settings-nav button i { width: auto; }
+      .page-heading h2 { font-size: 22px; }
+    }
+
+    @media (max-width: 520px) {
+      .environment { display: none; }
+      .page-heading { flex-direction: column; }
+      .page-heading > .button { width: 100%; }
+      .form-grid, .system-grid { grid-template-columns: 1fr; }
+      .field.full { grid-column: auto; }
+      .card-header, .card-body { padding: 16px; }
+      .setting-row, .backup-row { align-items: flex-start; }
+      .setting-control select,
+      .setting-control input[type="number"] { width: 100px; }
+      .form-actions > * { flex: 1; }
+      .section-heading { align-items: flex-start; }
+    }
+  </style>
+</head>
+
+<body>
+<div class="app">
+  <aside class="sidebar" id="sidebar">
+    <div class="brand">
+      <div class="brand-mark"><i class="fa-solid fa-bed"></i></div>
+      <div>
+        <h1>Hostel Space Finder</h1>
+        <p>Private workspace</p>
+      </div>
+    </div>
+
+    <div class="nav-label">Workspace</div>
+    <a class="nav-link" href="./index.html"><i class="fa-solid fa-chart-pie"></i> Dashboard</a>
+    <a class="nav-link" href="./scan.html"><i class="fa-solid fa-magnifying-glass"></i> Scan for Space</a>
+    <a class="nav-link" href="./inventory.html"><i class="fa-solid fa-building"></i> Inventory &amp; Records</a>
+    <a class="nav-link" href="./protected-spaces.html"><i class="fa-solid fa-shield-halved"></i> Protected Spaces</a>
+    <a class="nav-link" href="./history.html"><i class="fa-solid fa-clock-rotate-left"></i> Scan History</a>
+    <a class="nav-link" href="./reports.html"><i class="fa-solid fa-chart-column"></i> Reports &amp; Exports</a>
+
+    <div class="nav-label">Configuration</div>
+    <a class="nav-link active" href="./settings.html"><i class="fa-solid fa-gear"></i> Settings</a>
+
+    <div class="sidebar-bottom">
+      <div class="local-note">
+        <i class="fa-solid fa-lock"></i>
+        <span>Private workspace. Keep portal credentials and database secrets on the backend.</span>
+      </div>
+    </div>
+  </aside>
+
+  <div class="page-overlay" id="pageOverlay"></div>
+
+  <main class="main">
+    <header class="topbar">
+      <div style="display:flex;align-items:center;gap:13px">
+        <button class="mobile-menu" id="mobileMenu" aria-label="Open navigation">
+          <i class="fa-solid fa-bars"></i>
+        </button>
+        <div class="breadcrumbs">Workspace <span style="margin:0 8px">/</span> <strong>Settings</strong></div>
+      </div>
+      <div class="top-actions">
+        <span class="environment"><i class="fa-solid fa-circle"></i> Private workspace</span>
+        <div class="avatar">HS</div>
+      </div>
+    </header>
+
+    <div class="content">
+      <div class="page-heading">
+        <div>
+          <div class="eyebrow">Configuration centre</div>
+          <h2>Settings</h2>
+          <p>Manage portal access, scanning behaviour, application preferences and data protection.</p>
+        </div>
+        <button class="button button-primary" id="saveAllBtn">
+          <i class="fa-solid fa-floppy-disk"></i> Save general settings
+        </button>
+      </div>
+
+      <div class="settings-layout">
+        <nav class="settings-nav" aria-label="Settings sections">
+          <button class="active" data-target="portalSection"><i class="fa-solid fa-key"></i><span>Portal Access</span></button>
+          <button data-target="scannerSection"><i class="fa-solid fa-sliders"></i><span>Scanner</span></button>
+          <button data-target="appSection"><i class="fa-solid fa-display"></i><span>Application</span></button>
+          <button data-target="dataSection"><i class="fa-solid fa-database"></i><span>Data &amp; Backups</span></button>
+          <button data-target="systemSection"><i class="fa-solid fa-circle-info"></i><span>System Information</span></button>
+        </nav>
+
+        <div class="settings-content">
+
+          <!-- PORTAL ACCESS -->
+          <section class="settings-section" id="portalSection">
+            <div class="section-heading">
+              <div>
+                <h3>Portal Access</h3>
+                <p>Configure the credentials and connection details used by the scanner.</p>
+              </div>
+              <span class="status-pill neutral" id="credentialStatus"><i class="fa-solid fa-circle-minus"></i> Not checked</span>
+            </div>
+
+            <div class="card">
+              <div class="card-header">
+                <div>
+                  <h4>Student portal connection</h4>
+                  <p>Credentials are handled by your private backend.</p>
+                </div>
+                <i class="fa-solid fa-shield-halved" style="color:#b18a2d;font-size:20px"></i>
+              </div>
+
+              <div class="card-body">
+                <div class="notice">
+                  <i class="fa-solid fa-lock"></i>
+                  <div>
+                    <strong>Credential security</strong><br>
+                    This page never saves your password in browser storage. The backend must protect credentials at rest, redact them from logs, and never return the password in an API response.
+                  </div>
+                </div>
+
+                <form id="portalForm">
+                  <div class="form-grid">
+                    <div class="field full">
+                      <label for="portalUrl">Portal base URL</label>
+                      <input id="portalUrl" type="url" placeholder="https://portal.example.edu.ng" required>
+                      <small>Enter the plain URL, not Markdown link syntax. Only use the official portal URL you are authorised to access.</small>
+                    </div>
+
+                    <div class="field">
+                      <label for="portalUsername">Matric number / username</label>
+                      <input id="portalUsername" autocomplete="username" placeholder="Enter portal username">
+                    </div>
+
+                    <div class="field">
+                      <label for="portalPassword">Portal password</label>
+                      <div class="input-with-action">
+                        <input id="portalPassword" type="password" autocomplete="new-password" placeholder="Leave blank to keep saved password">
+                        <button class="icon-button" type="button" id="togglePassword" aria-label="Show or hide password">
+                          <i class="fa-regular fa-eye"></i>
+                        </button>
+                      </div>
+                      <small id="passwordHint">The saved password is never displayed. Leave this field blank to keep the current password.</small>
+                    </div>
+
+                    <div class="field full">
+                      <label for="loginPath">Login path (optional)</label>
+                      <input id="loginPath" type="text" placeholder="/login">
+                      <small>Only configure this if your scanner backend explicitly supports a configurable login path.</small>
+                    </div>
+                  </div>
+
+                  <div class="form-actions" style="justify-content:space-between">
+                    <button class="button button-outline" type="button" id="testConnectionBtn">
+                      <i class="fa-solid fa-plug"></i> Test connection
+                    </button>
+                    <button class="button button-primary" type="submit" id="saveCredentialsBtn">
+                      <i class="fa-solid fa-lock"></i> Save portal credentials
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </section>
+
+          <!-- SCANNER SETTINGS -->
+          <section class="settings-section" id="scannerSection">
+            <div class="section-heading">
+              <div>
+                <h3>Scanner Preferences</h3>
+                <p>Control scan behaviour and avoid unnecessary requests to the portal.</p>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="card-header">
+                <div>
+                  <h4>Scan execution</h4>
+                  <p>These preferences require backend validation and enforcement.</p>
+                </div>
+                <i class="fa-solid fa-gauge-high" style="color:#b18a2d;font-size:19px"></i>
+              </div>
+
+              <div class="card-body">
+                <div class="form-grid">
+                  <div class="field">
+                    <label for="defaultCampus">Default campus</label>
+                    <select id="defaultCampus">
+                      <option value="">Choose campus</option>
+                    </select>
+                    <small>Used as the default selection when opening a new scan.</small>
+                  </div>
+
+                  <div class="field">
+                    <label for="defaultScanMode">Default scan mode</label>
+                    <select id="defaultScanMode">
+                      <option value="full">Full scan</option>
+                      <option value="retry">Retry failed items</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div class="subsection">
+                  <h5>Execution limits</h5>
+
+                  <div class="setting-row">
+                    <div>
+                      <div class="setting-title">Minimum delay between requests (ms)</div>
+                      <p>Wait between portal actions to reduce request bursts. Choose a delay compatible with portal rules.</p>
+                    </div>
+                    <div class="setting-control">
+                      <input type="number" id="requestDelay" min="1000" max="60000" step="500" value="3000" aria-label="Request delay in milliseconds">
+                    </div>
+                  </div>
+
+                  <div class="setting-row">
+                    <div>
+                      <div class="setting-title">Maximum scan duration (minutes)</div>
+                      <p>Stop a scan when it exceeds the configured limit, then record the run as timed out or failed.</p>
+                    </div>
+                    <div class="setting-control">
+                      <input type="number" id="scanTimeout" min="1" max="180" value="30" aria-label="Maximum scan duration">
+                    </div>
+                  </div>
+
+                  <div class="setting-row">
+                    <div>
+                      <div class="setting-title">Automatic retry after a failed scan</div>
+                      <p>Retry transient failures only, with a delay. Do not retry authentication failures indefinitely.</p>
+                    </div>
+                    <label class="switch">
+                      <input type="checkbox" id="autoRetry">
+                      <span class="switch-track"></span>
+                    </label>
+                  </div>
+
+                  <div class="setting-row">
+                    <div>
+                      <div class="setting-title">Maximum retry attempts</div>
+                      <p>Maximum retries for transient errors when automatic retry is enabled.</p>
+                    </div>
+                    <div class="setting-control">
+                      <select id="retryCount">
+                        <option value="1">1 retry</option>
+                        <option value="2" selected>2 retries</option>
+                        <option value="3">3 retries</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div class="setting-row">
+                    <div>
+                      <div class="setting-title">Allow overlapping scans</div>
+                      <p>Keep disabled. Concurrent runs can overload the portal, produce inconsistent results and trigger rate limits.</p>
+                    </div>
+                    <span class="status-pill success"><i class="fa-solid fa-lock"></i> Disabled</span>
+                  </div>
+                </div>
+
+                <div class="form-actions">
+                  <button class="button button-primary" id="saveScannerBtn">
+                    <i class="fa-solid fa-floppy-disk"></i> Save scanner settings
+                  </button>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- APPLICATION PREFERENCES -->
+          <section class="settings-section" id="appSection">
+            <div class="section-heading">
+              <div>
+                <h3>Application Preferences</h3>
+                <p>Configure the way information is displayed and exported.</p>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="card-header">
+                <div>
+                  <h4>Display and records</h4>
+                  <p>Preferences for your private workspace.</p>
+                </div>
+                <i class="fa-solid fa-display" style="color:#b18a2d;font-size:19px"></i>
+              </div>
+
+              <div class="card-body">
+                <div class="setting-row">
+                  <div>
+                    <div class="setting-title">Default table page size</div>
+                    <p>Number of records displayed per page in inventory, history and protected-space tables.</p>
+                  </div>
+                  <div class="setting-control">
+                    <select id="pageSize">
+                      <option value="10">10 rows</option>
+                      <option value="25" selected>25 rows</option>
+                      <option value="50">50 rows</option>
+                      <option value="100">100 rows</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div class="setting-row">
+                  <div>
+                    <div class="setting-title">Default export format</div>
+                    <p>Reports should export confirmed records only and clearly identify failed or incomplete scans.</p>
+                  </div>
+                  <div class="setting-control">
+                    <select id="exportFormat">
+                      <option value="xlsx" selected>Excel (.xlsx)</option>
+                      <option value="csv">CSV (.csv)</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div class="setting-row">
+                  <div>
+                    <div class="setting-title">Show scan activity messages</div>
+                    <p>Display progress and status messages while a scan is running.</p>
+                  </div>
+                  <label class="switch">
+                    <input type="checkbox" id="showActivity" checked>
+                    <span class="switch-track"></span>
+                  </label>
+                </div>
+
+                <div class="setting-row">
+                  <div>
+                    <div class="setting-title">Confirm before releasing a protected space</div>
+                    <p>Require an explicit confirmation before changing a protection record to released.</p>
+                  </div>
+                  <label class="switch">
+                    <input type="checkbox" id="confirmRelease" checked>
+                    <span class="switch-track"></span>
+                  </label>
+                </div>
+
+                <div class="setting-row">
+                  <div>
+                    <div class="setting-title">Preserve historical scan results</div>
+                    <p>Keep previous successful snapshots instead of replacing history with the latest scan.</p>
+                  </div>
+                  <span class="status-pill success"><i class="fa-solid fa-check"></i> Always enabled</span>
+                </div>
+
+                <div class="setting-row">
+                  <div>
+                    <div class="setting-title">Preserve protected-space records</div>
+                    <p>Protection records are separate from scanner results and must never be deleted by a scan.</p>
+                  </div>
+                  <span class="status-pill success"><i class="fa-solid fa-shield-halved"></i> Always enabled</span>
+                </div>
+
+                <div class="form-actions">
+                  <button class="button button-primary" id="saveAppBtn">
+                    <i class="fa-solid fa-floppy-disk"></i> Save application preferences
+                  </button>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- DATA AND BACKUPS -->
+          <section class="settings-section" id="dataSection">
+            <div class="section-heading">
+              <div>
+                <h3>Data &amp; Backups</h3>
+                <p>Review data storage and request a backup from the backend.</p>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="card-header">
+                <div>
+                  <h4>Storage information</h4>
+                  <p>Live values must come from the backend, not browser assumptions.</p>
+                </div>
+                <i class="fa-solid fa-database" style="color:#b18a2d;font-size:19px"></i>
+              </div>
+
+              <div class="card-body">
+                <div class="system-grid">
+                  <div class="system-item">
+                    <div class="label">Database engine</div>
+                    <div class="value" id="databaseEngine">Checking…</div>
+                    <div class="detail">Expected: SQLite for the local prototype.</div>
+                  </div>
+
+                  <div class="system-item">
+                    <div class="label">Last successful backup</div>
+                    <div class="value" id="lastBackup">Not available</div>
+                    <div class="detail">Timestamp supplied by the backend.</div>
+                  </div>
+
+                  <div class="system-item">
+                    <div class="label">Latest successful scan</div>
+                    <div class="value" id="latestScan">Not available</div>
+                    <div class="detail">A failed scan must not overwrite the last successful snapshot.</div>
+                  </div>
+
+                  <div class="system-item">
+                    <div class="label">Protected-space records</div>
+                    <div class="value" id="protectedCount">Not available</div>
+                    <div class="detail">Stored independently from scan snapshots.</div>
+                  </div>
+                </div>
+
+                <div class="subsection">
+                  <h5>Backup management</h5>
+
+                  <div class="backup-row">
+                    <div>
+                      <strong>Create database backup</strong>
+                      <p>Request a consistent database backup from the backend, including scan history, inventory records and protection records.</p>
+                    </div>
+                    <button class="button button-outline" id="backupBtn">
+                      <i class="fa-solid fa-box-archive"></i> Create backup
+                    </button>
+                  </div>
+
+                  <div class="backup-row">
+                    <div>
+                      <strong>Export application settings</strong>
+                      <p>Export non-secret settings for reference. Portal passwords and encryption keys must never be included.</p>
+                    </div>
+                    <button class="button button-outline" id="exportSettingsBtn">
+                      <i class="fa-solid fa-download"></i> Export settings
+                    </button>
+                  </div>
+                </div>
+
+                <div class="notice" style="margin:20px 0 0">
+                  <i class="fa-solid fa-circle-info"></i>
+                  <div>
+                    <strong>Backup reminder</strong><br>
+                    A backup is not complete until the backend confirms success and provides a backup reference. Store backups separately from the live database and test restoration periodically.
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- SYSTEM INFORMATION -->
+          <section class="settings-section" id="systemSection">
+            <div class="section-heading">
+              <div>
+                <h3>System Information</h3>
+                <p>Basic information about the application and its backend connection.</p>
+              </div>
+              <button class="button button-outline" id="refreshSystemBtn">
+                <i class="fa-solid fa-rotate"></i> Refresh
+              </button>
+            </div>
+
+            <div class="card">
+              <div class="card-header">
+                <div>
+                  <h4>Application details</h4>
+                  <p>Values are populated from the API where available.</p>
+                </div>
+                <span class="status-pill neutral" id="apiStatus"><i class="fa-solid fa-circle"></i> Checking API</span>
+              </div>
+
+              <div class="card-body">
+                <div class="system-grid">
+                  <div class="system-item">
+                    <div class="label">Application</div>
+                    <div class="value">Hostel Space Finder</div>
+                    <div class="detail">Private hostel availability and records workspace.</div>
+                  </div>
+
+                  <div class="system-item">
+                    <div class="label">Application version</div>
+                    <div class="value" id="appVersion">Not supplied</div>
+                    <div class="detail">Read from the backend when configured.</div>
+                  </div>
+
+                  <div class="system-item">
+                    <div class="label">Backend connection</div>
+                    <div class="value" id="backendAddress">Not connected</div>
+                    <div class="detail">Do not display secret keys or database credentials here.</div>
+                  </div>
+
+                  <div class="system-item">
+                    <div class="label">Last settings update</div>
+                    <div class="value" id="lastSettingsUpdate">Not available</div>
+                    <div class="detail">Should reflect the backend's saved timestamp.</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="card danger-zone" style="margin-top:18px">
+              <div class="card-header">
+                <div>
+                  <h4><i class="fa-solid fa-triangle-exclamation" style="margin-right:6px"></i> Sensitive operations</h4>
+                  <p>Actions that can affect stored records are deliberately restricted.</p>
+                </div>
+              </div>
+              <div class="card-body">
+                <div class="backup-row">
+                  <div>
+                    <strong>Clear scan history</strong>
+                    <p>Not available from this page. If implemented later, it must require a separate backend-authorised operation and confirmation.</p>
+                  </div>
+                  <span class="status-pill neutral">Restricted</span>
+                </div>
+                <div class="backup-row">
+                  <div>
+                    <strong>Delete protected spaces</strong>
+                    <p>New scans must never remove protected-space records. Use the Protected Spaces page to manage individual records and their release history.</p>
+                  </div>
+                  <a class="button button-outline" href="./protected-spaces.html">Open register</a>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <div class="footer-note">
+            Hostel Space Finder · Settings<br>
+            Keep this tool private and use it only with authorised portal access.
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite">
+  <i class="fa-solid fa-circle-check" id="toastIcon"></i>
+  <div class="toast-text">
+    <strong id="toastTitle">Notice</strong>
+    <span id="toastMessage"></span>
+  </div>
+</div>
+
+<script>
+  /*
+    API CONTRACT EXPECTED BY THIS PAGE
+
+    GET    /api/settings
+      {
+        portal: {
+          base_url, username, login_path,
+          credentials_saved: true
+        },
+        scanner: {
+          default_campus_id, default_scan_mode,
+          request_delay_ms, timeout_minutes,
+          auto_retry, retry_count
+        },
+        application: {
+          page_size, export_format, show_activity, confirm_release
+        },
+        system: {
+          database_engine, last_backup_at,
+          latest_successful_scan_at, protected_space_count,
+          version, last_settings_update
+        }
+      }
+
+    GET    /api/campuses
+      { items: [{ id, name }] }
+
+    PUT    /api/settings/portal-credentials
+      { base_url, username, password, login_path }
+      Password may be omitted to retain the existing secret.
+      Never return a password in the response.
+
+    POST   /api/settings/test-portal-connection
+      { } 
+      Backend uses saved credentials and returns a safe status message.
+
+    PATCH  /api/settings/scanner
+      { default_campus_id, default_scan_mode, request_delay_ms,
+        timeout_minutes, auto_retry, retry_count }
+
+    PATCH  /api/settings/application
+      { page_size, export_format, show_activity, confirm_release }
+
+    POST   /api/backups
+      Returns a confirmed backup result/reference.
+
+    SECURITY:
+    - Use authenticated, same-origin requests and CSRF protection where applicable.
+    - Validate settings on the server.
+    - Encrypt credentials at rest using a key kept outside the database.
+    - Never put secrets in localStorage, client JavaScript, Git, or logs.
+    - The UI alone does not provide access control or credential security.
+  */
+
+  const API_BASE = '/api';
+
+  const state = {
+    settings: null,
+    campuses: [],
+    toastTimer: null
+  };
+
+  const $ = id => document.getElementById(id);
+
+  function toast(title, message, error = false) {
+    const el = $('toast');
+    $('toastTitle').textContent = title;
+    $('toastMessage').textContent = message;
+    $('toastIcon').className = error
+      ? 'fa-solid fa-circle-exclamation'
+      : 'fa-solid fa-circle-check';
+
+    el.classList.toggle('error', error);
+    el.classList.add('show');
+
+    clearTimeout(state.toastTimer);
+    state.toastTimer = setTimeout(() => el.classList.remove('show'), 4200);
+  }
+
+  async function api(path, options = {}) {
+    const headers = {
+      'Accept': 'application/json',
+      ...(options.body ? { 'Content-Type': 'application/json' } : {}),
+      ...(options.headers || {})
+    };
+
+    const response = await fetch(`${API_BASE}${path}`, {
+      credentials: 'same-origin',
+      ...options,
+      headers
+    });
+
+    if (response.status === 204) return {};
+
+    const contentType = response.headers.get('content-type') || '';
+    let data = {};
+
+    if (contentType.includes('application/json')) {
+      data = await response.json();
+    } else {
+      const raw = await response.text();
+      if (!response.ok) {
+        throw new Error(raw || `Request failed (${response.status})`);
+      }
+      return { message: raw };
+    }
+
+    if (!response.ok) {
+      throw new Error(data.message || data.error || `Request failed (${response.status})`);
+    }
+
+    return data;
+  }
+
+  function formatDate(value) {
+    if (!value) return 'Not available';
+
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return 'Not available';
+
+    return date.toLocaleString(undefined, {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  }
+
+  function setApiStatus(connected, text) {
+    const el = $('apiStatus');
+    el.className = `status-pill ${connected ? 'success' : 'danger'}`;
+    el.innerHTML = connected
+      ? '<i class="fa-solid fa-circle-check"></i> Connected'
+      : '<i class="fa-solid fa-circle-exclamation"></i> Unavailable';
+
+    $('backendAddress').textContent = connected
+      ? (text || 'Connected')
+      : 'Not connected';
+  }
+
+  function applySettings(data) {
+    state.settings = data || {};
+    const portal = data.portal || {};
+    const scanner = data.scanner || {};
+    const app = data.application || {};
+    const system = data.system || {};
+
+    $('portalUrl').value = portal.base_url || '';
+    $('portalUsername').value = portal.username || '';
+    $('portalPassword').value = '';
+
+    $('loginPath').value = portal.login_path || '';
+
+    const credentialStatus = $('credentialStatus');
+    if (portal.credentials_saved) {
+      credentialStatus.className = 'status-pill success';
+      credentialStatus.innerHTML = '<i class="fa-solid fa-lock"></i> Credentials saved';
+      $('passwordHint').textContent =
+        'A password is saved securely on the backend. Leave this field blank to keep it.';
+    } else {
+      credentialStatus.className = 'status-pill warning';
+      credentialStatus.innerHTML = '<i class="fa-solid fa-key"></i> Credentials not saved';
+      $('passwordHint').textContent =
+        'Enter the portal password to save it securely on the backend.';
+    }
+
+    $('defaultScanMode').value = scanner.default_scan_mode || 'full';
+    $('requestDelay').value = scanner.request_delay_ms ?? 3000;
+    $('scanTimeout').value = scanner.timeout_minutes ?? 30;
+    $('autoRetry').checked = Boolean(scanner.auto_retry);
+    $('retryCount').value = String(scanner.retry_count ?? 2);
+
+    $('pageSize').value = String(app.page_size ?? 25);
+    $('exportFormat').value = app.export_format || 'xlsx';
+    $('showActivity').checked = app.show_activity !== false;
+    $('confirmRelease').checked = app.confirm_release !== false;
+
+    $('databaseEngine').textContent = system.database_engine || 'Not supplied';
+    $('lastBackup').textContent = formatDate(system.last_backup_at);
+    $('latestScan').textContent = formatDate(system.latest_successful_scan_at);
+    $('protectedCount').textContent =
+      Number.isFinite(Number(system.protected_space_count))
+        ? Number(system.protected_space_count).toLocaleString()
+        : 'Not available';
+
+    $('appVersion').textContent = system.version || 'Not supplied';
+    $('lastSettingsUpdate').textContent = formatDate(system.last_settings_update);
+  }
+
+  async function loadCampuses() {
+    const data = await api('/campuses');
+    state.campuses = Array.isArray(data.items) ? data.items : [];
+
+    const select = $('defaultCampus');
+    const previous = state.settings?.scanner?.default_campus_id;
+
+    select.innerHTML = '<option value="">Choose campus</option>';
+
+    state.campuses.forEach(campus => {
+      const option = document.createElement('option');
+      option.value = String(campus.id);
+      option.textContent = campus.name;
+      select.appendChild(option);
+    });
+
+    if (previous != null) select.value = String(previous);
+  }
+
+  async function loadSettings() {
+    try {
+      const data = await api('/settings');
+      applySettings(data);
+      setApiStatus(true, 'API connected');
+
+      try {
+        await loadCampuses();
+      } catch (error) {
+        console.warn('Could not load campuses:', error.message);
+      }
+    } catch (error) {
+      setApiStatus(false, 'API unavailable');
+      $('databaseEngine').textContent = 'Unavailable';
+      toast(
+        'Backend unavailable',
+        'Settings could not be loaded. Start the backend and confirm the settings API is configured.',
+        true
+      );
+    }
+  }
+
+  function collectScannerSettings() {
+    return {
+      default_campus_id: $('defaultCampus').value || null,
+      default_scan_mode: $('defaultScanMode').value,
+      request_delay_ms: Number($('requestDelay').value),
+      timeout_minutes: Number($('scanTimeout').value),
+      auto_retry: $('autoRetry').checked,
+      retry_count: Number($('retryCount').value)
+    };
+  }
+
+  function collectApplicationSettings() {
+    return {
+      page_size: Number($('pageSize').value),
+      export_format: $('exportFormat').value,
+      show_activity: $('showActivity').checked,
+      confirm_release: $('confirmRelease').checked
+    };
+  }
+
+  function validateScannerSettings(data) {
+    if (!Number.isInteger(data.request_delay_ms) ||
+        data.request_delay_ms < 1000 ||
+        data.request_delay_ms > 60000) {
+      throw new Error('Request delay must be between 1,000 and 60,000 milliseconds.');
+    }
+
+    if (!Number.isInteger(data.timeout_minutes) ||
+        data.timeout_minutes < 1 ||
+        data.timeout_minutes > 180) {
+      throw new Error('Scan duration must be between 1 and 180 minutes.');
+    }
+
+    if (![1, 2, 3].includes(data.retry_count)) {
+      throw new Error('Choose a valid retry limit.');
+    }
+  }
+
+  async function saveScannerSettings() {
+    const data = collectScannerSettings();
+
+    try {
+      validateScannerSettings(data);
+
+      await api('/settings/scanner', {
+        method: 'PATCH',
+        body: JSON.stringify(data)
+      });
+
+      toast('Scanner settings saved', 'Your scanner preferences were saved.');
+      await loadSettings();
+    } catch (error) {
+      toast('Could not save scanner settings', error.message, true);
+    }
+  }
+
+  async function saveApplicationSettings() {
+    try {
+      await api('/settings/application', {
+        method: 'PATCH',
+        body: JSON.stringify(collectApplicationSettings())
+      });
+
+      toast('Preferences saved', 'Your application preferences were saved.');
+      await loadSettings();
+    } catch (error) {
+      toast('Could not save preferences', error.message, true);
+    }
+  }
+
+  async function savePortalCredentials(event) {
+    event.preventDefault();
+
+    const baseUrl = $('portalUrl').value.trim();
+    const username = $('portalUsername').value.trim();
+    const password = $('portalPassword').value;
+    const loginPath = $('loginPath').value.trim();
+
+    let parsedUrl;
+    try {
+      parsedUrl = new URL(baseUrl);
+    } catch {
+      toast('Invalid portal URL', 'Enter a valid portal base URL.', true);
+      return;
+    }
+
+    if (!['https:', 'http:'].includes(parsedUrl.protocol)) {
+      toast('Invalid portal URL', 'Only HTTP or HTTPS URLs are supported.', true);
+      return;
+    }
+
+    if (!username) {
+      toast('Username required', 'Enter the portal username.', true);
+      return;
+    }
+
+    const currentlySaved = Boolean(state.settings?.portal?.credentials_saved);
+    if (!password && !currentlySaved) {
+      toast('Password required', 'Enter a password before saving the initial credentials.', true);
+      return;
+    }
+
+    const button = $('saveCredentialsBtn');
+    button.disabled = true;
+
+    try {
+      const body = {
+        base_url: baseUrl,
+        username,
+        login_path
+      };
+
+      if (password) body.password = password;
+
+      const result = await api('/settings/portal-credentials', {
+        method: 'PUT',
+        body: JSON.stringify(body)
+      });
+
+      $('portalPassword').value = '';
+      toast(
+        'Portal settings saved',
+        result.message || 'The backend accepted the portal settings.'
+      );
+
+      await loadSettings();
+    } catch (error) {
+      toast('Could not save portal settings', error.message, true);
+    } finally {
+      button.disabled = false;
+    }
+  }
+
+  async function testConnection() {
+    const button = $('testConnectionBtn');
+    button.disabled = true;
+    button.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Testing…';
+
+    try {
+      const result = await api('/settings/test-portal-connection', {
+        method: 'POST',
+        body: JSON.stringify({})
+      });
+
+      const credentialStatus = $('credentialStatus');
+      credentialStatus.className = 'status-pill success';
+      credentialStatus.innerHTML = '<i class="fa-solid fa-circle-check"></i> Connection tested';
+
+      toast(
+        'Connection test completed',
+        result.message || 'The backend returned a successful connection test.'
+      );
+    } catch (error) {
+      toast(
+        'Connection test failed',
+        error.message || 'Check the saved credentials and portal configuration.',
+        true
+      );
+    } finally {
+      button.disabled = false;
+      button.innerHTML = '<i class="fa-solid fa-plug"></i> Test connection';
+    }
+  }
+
+  async function createBackup() {
+    const button = $('backupBtn');
+
+    if (!confirm('Request a database backup from the backend?')) return;
+
+    button.disabled = true;
+    button.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Creating…';
+
+    try {
+      const result = await api('/backups', {
+        method: 'POST',
+        body: JSON.stringify({})
+      });
+
+      if (result.success === false) {
+        throw new Error(result.message || 'The backend did not confirm backup success.');
+      }
+
+      toast(
+        'Backup request completed',
+        result.message || 'The backend accepted the backup request. Verify the returned backup reference.'
+      );
+
+      await loadSettings();
+    } catch (error) {
+      toast('Backup failed', error.message, true);
+    } finally {
+      button.disabled = false;
+      button.innerHTML = '<i class="fa-solid fa-box-archive"></i> Create backup';
+    }
+  }
+
+  function downloadJson(data, filename) {
+    const blob = new Blob([JSON.stringify(data, null, 2)], {
+      type: 'application/json'
+    });
+
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+  }
+
+  function exportSafeSettings() {
+    const data = state.settings || {};
+
+    const safeExport = {
+      application: data.application || {},
+      scanner: data.scanner || {},
+      portal: {
+        base_url: data.portal?.base_url || '',
+        username: data.portal?.username || '',
+        login_path: data.portal?.login_path || '',
+        credentials_saved: Boolean(data.portal?.credentials_saved)
+      },
+      exported_at: new Date().toISOString(),
+      note: 'This export intentionally excludes portal passwords, encryption keys, session cookies, and database secrets.'
+    };
+
+    downloadJson(safeExport, 'hostel-space-finder-settings.json');
+    toast('Settings exported', 'Only non-secret settings were included.');
+  }
+
+  $('togglePassword').addEventListener('click', () => {
+    const input = $('portalPassword');
+    const icon = $('togglePassword').querySelector('i');
+    const reveal = input.type === 'password';
+
+    input.type = reveal ? 'text' : 'password';
+    icon.className = reveal ? 'fa-regular fa-eye-slash' : 'fa-regular fa-eye';
+  });
+
+  $('portalForm').addEventListener('submit', savePortalCredentials);
+  $('testConnectionBtn').addEventListener('click', testConnection);
+  $('saveScannerBtn').addEventListener('click', saveScannerSettings);
+  $('saveAppBtn').addEventListener('click', saveApplicationSettings);
+  $('backupBtn').addEventListener('click', createBackup);
+  $('exportSettingsBtn').addEventListener('click', exportSafeSettings);
+  $('refreshSystemBtn').addEventListener('click', loadSettings);
+
+  $('saveAllBtn').addEventListener('click', async () => {
+    await saveScannerSettings();
+    await saveApplicationSettings();
+  });
+
+  // Settings navigation scrolls to sections and highlights the selected item.
+  document.querySelectorAll('.settings-nav button').forEach(button => {
+    button.addEventListener('click', () => {
+      document.querySelectorAll('.settings-nav button').forEach(item => {
+        item.classList.remove('active');
+      });
+
+      button.classList.add('active');
+
+      const section = $(button.dataset.target);
+      if (section) section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  });
+
+  // Mobile sidebar.
+  const sidebar = $('sidebar');
+  const overlay = $('pageOverlay');
+
+  function closeSidebar() {
+    sidebar.classList.remove('open');
+    overlay.classList.remove('show');
+  }
+
+  $('mobileMenu').addEventListener('click', () => {
+    sidebar.classList.toggle('open');
+    overlay.classList.toggle('show');
+  });
+
+  overlay.addEventListener('click', closeSidebar);
+
+  // General settings button saves both scanner and application preferences.
+  // Portal credentials are saved separately so they cannot be submitted accidentally.
+  loadSettings();
+</script>
+</body>
+</html>
