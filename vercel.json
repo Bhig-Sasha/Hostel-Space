@@ -1,0 +1,55 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+
+  "cleanUrls": true,
+  "trailingSlash": false,
+
+  "rewrites": [
+    { "source": "/", "destination": "/login.html" },
+    { "source": "/login", "destination": "/login.html" },
+    { "source": "/dashboard", "destination": "/index.html" },
+    { "source": "/scan", "destination": "/scan.html" },
+    { "source": "/inventory", "destination": "/inventory.html" },
+    { "source": "/protected-spaces", "destination": "/protected-spaces.html" },
+    { "source": "/history", "destination": "/history.html" },
+    { "source": "/reports", "destination": "/reports.html" },
+    { "source": "/settings", "destination": "/settings.html" }
+  ],
+
+  "redirects": [
+    { "source": "/index", "destination": "/dashboard", "permanent": true },
+    { "source": "/home", "destination": "/dashboard", "permanent": true },
+    { "source": "/signin", "destination": "/login", "permanent": true },
+    { "source": "/sign-in", "destination": "/login", "permanent": true }
+  ],
+
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        { "key": "X-Content-Type-Options", "value": "nosniff" },
+        { "key": "X-Frame-Options", "value": "DENY" },
+        { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
+        { "key": "Permissions-Policy", "value": "geolocation=(), microphone=(), camera=()" }
+      ]
+    },
+    {
+      "source": "/login.html",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-store, max-age=0" }
+      ]
+    },
+    {
+      "source": "/index.html",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-store, max-age=0" }
+      ]
+    },
+    {
+      "source": "/(.*).html",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-store, max-age=0" }
+      ]
+    }
+  ]
+}
