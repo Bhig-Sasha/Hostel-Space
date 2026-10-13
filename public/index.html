@@ -1082,83 +1082,37 @@
 </div>
 
 <script>
-  /*
-    BACKEND API CONTRACT
+  "use strict";
 
-    GET /api/dashboard
-      {
-        available_beds: number,
-        hostel_count: number,
-        successful_scans: number,
-        active_protected_spaces: number,
-        latest_successful_scan_at: ISO date or null,
-        last_scan_status: "success" | "partial" | "failed" | "unknown",
-        availability_note: string
-      }
+  // ---- HARDCODED PRODUCTION API ----
+  const API_BASE = 'https://hostel-space-service.onrender.com';
 
-    GET /api/campuses
-      { items: [{ id, name }] }
-
-    GET /api/dashboard/hostels?campus_id=...
-      {
-        items: [{
-          campus_id, campus_name,
-          hostel_id, hostel_name,
-          rooms_checked, available_beds,
-          protected_spaces, latest_successful_scan_at,
-          status
-        }]
-      }
-
-    GET /api/scans?page=1&limit=5
-      {
-        items: [{
-          id, campus_name, hostel_name,
-          started_at, completed_at, status,
-          rooms_checked, available_beds, message
-        }]
-      }
-
-    GET /api/auth/me
-      { user: { display_name, initials } }
-
-    GET /api/auth/session
-      { authenticated: true }
-
-    Authentication:
-    - This page expects the backend to validate the session.
-    - If unauthenticated, redirect to login.html.
-    - Protect all private API endpoints on the server.
-    - A client-side redirect alone is not authentication.
-  */
-
-  const API_BASE = '/api';
+  const $ = (id) => document.getElementById(id);
 
   const state = {
     campuses: [],
-    hostels: [],
-    scans: [],
+    hostelSummaries: [],
+    recentScans: [],
     dashboard: null,
     campusId: '',
-    status: ''
+    status: '',
   };
 
-  const $ = id => document.getElementById(id);
-
-  async function api(path, options = {}) {
+  async function api(path, options) {
+    options = options || {};
     const headers = {
       'Accept': 'application/json',
       ...(options.body ? { 'Content-Type': 'application/json' } : {}),
-      ...(options.headers || {})
+      ...(options.headers || {}),
     };
 
     const response = await fetch(`${API_BASE}${path}`, {
-      credentials: 'same-origin',
       ...options,
-      headers
+      credentials: 'include',
+      headers,
     });
 
-    if (response.status === 401) {
+    if (response.status === 401 && path !== '/api/auth/session') {
       window.location.replace('./login.html');
       throw new Error('Your session has expired. Please sign in again.');
     }
@@ -1167,85 +1121,81 @@
 
     const type = response.headers.get('content-type') || '';
     const data = type.includes('application/json')
-      ? await response.json()
+      ? await response.json().catch(() => ({}))
       : { message: await response.text() };
 
     if (!response.ok) {
-      throw new Error(data.message || data.error || `Request failed (${response.status})`);
+      throw new Error(data.error || data.message || `Request failed (${response.status})`);
     }
 
     return data;
   }
 
   function formatNumber(value) {
-    const number = Number(value);
-    return Number.isFinite(number) ? number.toLocaleString() : '—';
+    const n = Number(value);
+    return Number.isFinite(n) ? n.toLocaleString() : '—';
   }
 
   function formatDate(value) {
     if (!value) return 'Not available';
-    const date = new Date(value);
-    if (Number.isNaN(date.getTime())) return 'Not available';
-
-    return date.toLocaleString(undefined, {
+    const d = new Date(value);
+    if (Number.isNaN(d.getTime())) return 'Not available';
+    return d.toLocaleString(undefined, {
       day: 'numeric',
       month: 'short',
       year: 'numeric',
       hour: '2-digit',
-      minute: '2-digit'
+      minute: '2-digit',
     });
   }
 
   function escapeHTML(value) {
-    return String(value ?? '').replace(/[&<>"']/g, char => ({
+    return String(value == null ? '' : value).replace(/[&<>"']/g, (c) => ({
       '&': '&amp;',
       '<': '&lt;',
       '>': '&gt;',
       '"': '&quot;',
-      "'": '&#39;'
-    })[char]);
+      "'": '&#39;',
+    })[c]);
   }
 
   function statusClass(status) {
-    const normalized = String(status || 'unknown').toLowerCase();
-
-    if (['success', 'completed', 'succeeded'].includes(normalized)) return 'success';
-    if (['partial', 'running', 'in_progress'].includes(normalized)) return 'warning';
-    if (['failed', 'error', 'timeout', 'cancelled'].includes(normalized)) return 'danger';
-    if (['available'].includes(normalized)) return 'success';
-
+    const s = String(status || 'unknown').toLowerCase();
+    if (['success', 'completed', 'succeeded'].includes(s)) return 'success';
+    if (['partial', 'running', 'queued', 'in_progress'].includes(s)) return 'warning';
+    if (['failed', 'error', 'timeout', 'cancelled'].includes(s)) return 'danger';
+    if (['available'].includes(s)) return 'success';
     return 'neutral';
   }
 
   function statusLabel(status) {
-    const normalized = String(status || 'unknown').toLowerCase();
-
+    const s = String(status || 'unknown').toLowerCase();
     const labels = {
       success: 'Successful',
       completed: 'Successful',
       succeeded: 'Successful',
       partial: 'Partial',
       running: 'Running',
+      queued: 'Queued',
       in_progress: 'Running',
       failed: 'Failed',
       error: 'Failed',
       timeout: 'Timed out',
       cancelled: 'Cancelled',
-      unknown: 'Unknown'
+      unknown: 'Unknown',
     };
-
-    return labels[normalized] || normalized.replaceAll('_', ' ');
+    return labels[s] || s.replace(/_/g, ' ');
   }
 
-  function showToast(title, message, error = false) {
+  function showToast(title, message, isError) {
     const el = $('toast');
-    el.querySelector('i').className = error
+    el.querySelector('i').className = isError
       ? 'fa-solid fa-circle-exclamation'
       : 'fa-solid fa-circle-check';
 
     $('toastTitle').textContent = title;
     $('toastMessage').textContent = message;
-    el.classList.toggle('error', error);
+    el.classList.toggle('error', !!isError);
     el.classList.add('show');
 
     clearTimeout(showToast.timer);
@@ -1260,56 +1210,43 @@
   }
 
   function renderStats(data) {
-    $('availableBeds').textContent = formatNumber(data.available_beds);
-    $('hostelCount').textContent = formatNumber(data.hostel_count);
-    $('successfulScans').textContent = formatNumber(data.successful_scans);
-    $('protectedSpaces').textContent = formatNumber(data.active_protected_spaces);
+    const totals = data.totals || {};
+    $('availableBeds').textContent = formatNumber(totals.available || 0);
+    $('hostelCount').textContent = formatNumber((data.hostelSummaries || []).length);
+    $('successfulScans').textContent = formatNumber((data.recentScans || []).length);
+    $('protectedSpaces').textContent = formatNumber(data.protectedActive || 0);
 
-    $('availabilityFoot').textContent = data.availability_note ||
-      `Last successful scan: ${formatDate(data.latest_successful_scan_at)}`;
+    const latest = data.lastSuccessfulScan;
+    $('availabilityFoot').textContent = latest
+      ? `Last successful scan: ${formatDate(latest.finished_at)}`
+      : 'Waiting for a successful scan';
 
     $('hostelFoot').textContent = 'Hostels configured in inventory';
     $('scanFoot').textContent = 'Successful runs in saved scan history';
     $('protectedFoot').textContent = 'Active records stored independently';
 
-    $('availabilityUpdated').textContent =
-      `Last successful snapshot: ${formatDate(data.latest_successful_scan_at)}`;
-  }
-
-  async function loadCampuses() {
-    const data = await api('/campuses');
-    state.campuses = Array.isArray(data.items) ? data.items : [];
-
-    const select = $('campusFilter');
-    const previous = state.campusId;
-
-    select.innerHTML = '<option value="">All campuses</option>';
-
-    state.campuses.forEach(campus => {
-      const option = document.createElement('option');
-      option.value = String(campus.id);
-      option.textContent = campus.name;
-      select.appendChild(option);
-    });
-
-    select.value = previous;
+    $('availabilityUpdated').textContent = latest
+      ? `Last successful snapshot: ${formatDate(latest.finished_at)}`
+      : 'Last successful snapshot: not available';
   }
 
   function renderHostels() {
     const body = $('hostelTableBody');
-    let items = state.hostels;
+    let items = state.hostelSummaries;
 
     if (state.campusId) {
-      items = items.filter(item => String(item.campus_id) === state.campusId);
+      items = items.filter((item) =>
+        String(item.campusId || '').toLowerCase() === state.campusId.toLowerCase()
+      );
     }
 
     if (state.status) {
-      items = items.filter(item => {
-        const status = String(item.status || 'unknown').toLowerCase();
-        if (state.status === 'success') return ['success', 'completed', 'succeeded'].includes(status);
-        if (state.status === 'failed') return ['failed', 'error', 'timeout', 'cancelled'].includes(status);
-        if (state.status === 'partial') return status === 'partial';
-        return ['unknown', ''].includes(status);
+      items = items.filter((item) => {
+        const t = item.totals || {};
+        const hasData = (t.available || 0) + (t.occupied || 0) + (t.unknown || 0) > 0;
+        if (state.status === 'success') return hasData;
+        if (state.status === 'unknown') return !hasData;
+        return true;
       });
     }
 
@@ -1319,31 +1256,41 @@
           <div class="empty-state">
             <i class="fa-solid fa-building-circle-exclamation"></i>
             <strong>No hostel results available</strong>
-            Run a scan or change your filters. No result does not mean that every bed is available.
+            Run a scan or change your filters. No result does not mean every bed is available.
           </div>
         </td></tr>`;
       return;
     }
 
-    body.innerHTML = items.map(item => `
-      <tr>
-        <td>
-          <div class="hostel-name">${escapeHTML(item.hostel_name || 'Unnamed hostel')}</div>
-          <div class="subtext">${escapeHTML(item.campus_name || 'Campus not recorded')}</div>
-        </td>
-        <td>${formatNumber(item.rooms_checked)}</td>
-        <td><strong>${formatNumber(item.available_beds)}</strong></td>
-        <td>${formatNumber(item.protected_spaces)}</td>
-        <td>${escapeHTML(formatDate(item.latest_successful_scan_at))}</td>
-        <td><span class="status-pill ${statusClass(item.status)}">${escapeHTML(statusLabel(item.status))}</span></td>
-      </tr>
-    `).join('');
+    const latestTime = state.dashboard && state.dashboard.lastSuccessfulScan
+      ? state.dashboard.lastSuccessfulScan.finished_at
+      : null;
+
+    body.innerHTML = items.map((item) => {
+      const t = item.totals || {};
+      const roomsChecked = (t.available || 0) + (t.occupied || 0) + (t.unknown || 0);
+      const status = roomsChecked > 0 ? 'success' : 'unknown';
+
+      return `
+        <tr>
+          <td>
+            <div class="hostel-name">${escapeHTML(item.hostelName || 'Unnamed hostel')}</div>
+            <div class="subtext">${escapeHTML(item.campusName || 'Campus not recorded')}${item.gender ? ' · ' + escapeHTML(item.gender) : ''}</div>
+          </td>
+          <td>${formatNumber(roomsChecked)}</td>
+          <td><strong>${formatNumber(t.available || 0)}</strong></td>
+          <td>${formatNumber(t.held || 0)}</td>
+          <td>${escapeHTML(formatDate(latestTime))}</td>
+          <td><span class="status-pill ${statusClass(status)}">${escapeHTML(statusLabel(status))}</span></td>
+        </tr>
+      `;
+    }).join('');
   }
 
   function renderScans() {
     const container = $('recentScans');
 
-    if (!state.scans.length) {
+    if (!state.recentScans.length) {
       container.innerHTML = `
         <div class="empty-state">
           <i class="fa-solid fa-clock-rotate-left"></i>
@@ -1358,23 +1305,24 @@
       return;
     }
 
-    container.innerHTML = state.scans.slice(0, 5).map(scan => {
-      const normalized = String(scan.status || 'unknown').toLowerCase();
-      const failed = ['failed', 'error', 'timeout', 'cancelled'].includes(normalized);
-      const running = ['running', 'in_progress', 'queued'].includes(normalized);
+    container.innerHTML = state.recentScans.slice(0, 5).map((scan) => {
+      const s = String(scan.status || 'unknown').toLowerCase();
+      const failed = ['failed', 'error', 'timeout', 'cancelled'].includes(s);
+      const running = ['running', 'queued', 'in_progress'].includes(s);
       const iconClass = failed ? 'failed' : running ? 'running' : '';
       const icon = failed
         ? 'fa-triangle-exclamation'
         : running ? 'fa-spinner fa-spin' : 'fa-magnifying-glass';
 
-      const title = scan.hostel_name
-        ? `${scan.hostel_name} scan`
-        : scan.campus_name
-          ? `${scan.campus_name} scan`
+      const title = scan.hostel_id
+        ? `${scan.hostel_id} scan`
+        : scan.campus_id
+          ? `${scan.campus_id} scan`
           : 'Hostel availability scan';
 
-      const description = scan.message ||
-        `${formatNumber(scan.rooms_checked)} rooms checked · ${formatNumber(scan.available_beds)} available beds`;
+      const description = scan.error
+        ? scan.error
+        : `${formatNumber(scan.rooms_scanned || 0)} rooms checked · ${formatNumber(scan.available_count || 0)} available beds`;
 
       return `
         <div class="scan-item">
@@ -1384,7 +1332,7 @@
             <p>${escapeHTML(description)}</p>
             <div class="scan-meta">
               <span class="status-pill ${statusClass(scan.status)}">${escapeHTML(statusLabel(scan.status))}</span>
-              <time>${escapeHTML(formatDate(scan.completed_at || scan.started_at))}</time>
+              <time>${escapeHTML(formatDate(scan.finished_at || scan.started_at))}</time>
             </div>
           </div>
         </div>`;
@@ -1392,36 +1340,47 @@
   }
 
   async function loadDashboard() {
-    const data = await api('/dashboard');
+    const data = await api('/api/dashboard');
     state.dashboard = data;
+    state.hostelSummaries = Array.isArray(data.hostelSummaries) ? data.hostelSummaries : [];
+    state.recentScans = Array.isArray(data.recentScans) ? data.recentScans : [];
     renderStats(data);
-  }
-
-  async function loadHostels() {
-    const params = new URLSearchParams();
-    if (state.campusId) params.set('campus_id', state.campusId);
-
-    const query = params.toString();
-    const data = await api(`/dashboard/hostels${query ? `?${query}` : ''}`);
-    state.hostels = Array.isArray(data.items) ? data.items : [];
     renderHostels();
+    renderScans();
   }
 
-  async function loadScans() {
-    const data = await api('/scans?page=1&limit=5');
-    state.scans = Array.isArray(data.items) ? data.items : [];
-    renderScans();
+  async function loadCampuses() {
+    try {
+      const data = await api('/api/inventory/campuses');
+      state.campuses = Array.isArray(data.campuses) ? data.campuses : [];
+
+      const select = $('campusFilter');
+      const previous = state.campusId;
+      select.innerHTML = '<option value="">All campuses</option>';
+
+      state.campuses.forEach((campus) => {
+        const option = document.createElement('option');
+        option.value = String(campus.id);
+        option.textContent = campus.name;
+        select.appendChild(option);
+      });
+
+      select.value = previous;
+    } catch (err) {
+      console.warn('Campus list unavailable:', err.message);
+    }
   }
 
   async function loadUser() {
     try {
-      const data = await api('/auth/me');
+      const data = await api('/api/auth/me');
       const user = data.user || {};
-      if (user.display_name) $('welcomeTitle').textContent = `Welcome back, ${user.display_name}`;
-      if (user.initials) $('userAvatar').textContent = user.initials;
-    } catch (error) {
-      // The dashboard can still show its workspace heading if profile details are unavailable.
-      console.warn('Could not load profile:', error.message);
+      if (user.username) {
+        $('welcomeTitle').textContent = `Welcome back, ${user.username}`;
+        $('userAvatar').textContent = user.username.slice(0, 2).toUpperCase();
+      }
+    } catch (err) {
+      console.warn('Could not load profile:', err.message);
     }
   }
 
@@ -1431,22 +1390,12 @@
     button.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Refreshing';
 
     try {
-      const results = await Promise.allSettled([
-        loadDashboard(),
-        loadHostels(),
-        loadScans()
-      ]);
-
-      const successes = results.filter(result => result.status === 'fulfilled').length;
-      setConnection(successes > 0);
-
-      if (successes === results.length) {
-        showToast('Dashboard updated', 'The latest dashboard data has been loaded.');
-      } else if (successes > 0) {
-        showToast('Dashboard partially updated', 'Some data could not be loaded. Check the backend endpoints.', true);
-      } else {
-        showToast('Unable to refresh', 'Check that the backend is running and the API routes are available.', true);
-      }
+      await loadDashboard();
+      setConnection(true);
+      showToast('Dashboard updated', 'The latest dashboard data has been loaded.');
+    } catch (err) {
+      setConnection(false);
+      showToast('Unable to refresh', err.message || 'Check that the backend is running.', true);
     } finally {
       button.disabled = false;
       button.innerHTML = '<i class="fa-solid fa-rotate"></i> Refresh dashboard';
@@ -1455,16 +1404,12 @@
 
   $('refreshBtn').addEventListener('click', refreshDashboard);
 
-  $('campusFilter').addEventListener('change', async event => {
+  $('campusFilter').addEventListener('change', (event) => {
     state.campusId = event.target.value;
-    try {
-      await loadHostels();
-    } catch (error) {
-      showToast('Could not filter hostels', error.message, true);
-    }
+    renderHostels();
   });
 
-  $('hostelStatusFilter').addEventListener('change', event => {
+  $('hostelStatusFilter').addEventListener('change', (event) => {
     state.status = event.target.value;
     renderHostels();
   });
@@ -1484,34 +1429,25 @@
 
   overlay.addEventListener('click', closeSidebar);
 
-  document.querySelectorAll('.sidebar .nav-link').forEach(link => {
+  document.querySelectorAll('.sidebar .nav-link').forEach((link) => {
     link.addEventListener('click', closeSidebar);
   });
 
   async function initialise() {
-    // This check is only a user-experience convenience; every private API
-    // endpoint must also validate the session on the server.
     try {
-      const session = await api('/auth/session');
-      if (session.authenticated === false) {
+      const session = await api('/api/auth/session');
+      if (!session || session.authenticated !== true) {
         window.location.replace('./login.html');
         return;
       }
-    } catch (error) {
-      if (error.message.includes('session has expired')) return;
-      // Allow the dashboard shell to render if authentication routes have
-      // not yet been implemented. The backend must still protect private APIs.
-      console.warn('Session check unavailable:', error.message);
+    } catch (err) {
+      console.warn('Session check unavailable:', err.message);
+      window.location.replace('./login.html');
+      return;
     }
 
     await loadUser();
-
-    try {
-      await loadCampuses();
-    } catch (error) {
-      console.warn('Campus list unavailable:', error.message);
-    }
-
+    await loadCampuses();
     await refreshDashboard();
   }
 
