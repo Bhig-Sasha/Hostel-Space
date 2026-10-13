@@ -1,58 +1,81 @@
 /**
- * Hostel Space Finder — Single-File Backend Server (v2)
+ * Hostel Space Finder — Production Server (Supabase + Render + Vercel)
  * ---------------------------------------------------------------------------
- * Rebuilt to integrate the real BIU portal automation from hostelChecker.js
- * and the real hostelConfig.js structure (Legacy / Heritage → boys / girls →
- * flats / floors → hostel).
+ * Stack:
+ *   - Postgres (Supabase)     — all persistent data
+ *   - connect-pg-simple       — server-side sessions in Postgres
+ *   - Puppeteer               — BIU portal automation
+ *   - Express                 — API
  *
- * End-to-end pipeline:
- *   routes → scanner.service → scan-queue → portal-client (login)
- *          → hostel-scanner (drives Puppeteer exactly like hostelChecker.js)
- *          → result-parser → scan-history + inventory services → DB
+ * Deploy: Backend → Render | Frontend → Vercel | DB → Supabase
  *
  * Run:  node server.js
- * Deps: express express-session better-sqlite3 bcryptjs puppeteer chalk
- * Env:  BIU_PORTAL_URL, PORTAL_USER, PORTAL_PASS, SESSION_SECRET, CREDENTIAL_KEY
+ * Deps: express express-session connect-pg-simple pg bcryptjs
+ *       puppeteer chalk dotenv
  */
 
 'use strict';
 
 // ===========================================================================
-// 0. IMPORTS
+// 0. BOOT — env loading + validation
+// ===========================================================================
+try { require('dotenv').config(); } catch { /* optional */ }
+
+const REQUIRED_ENV = ['DATABASE_URL', 'SESSION_SECRET', 'CREDENTIAL_KEY'];
+const PLACEHOLDER_PATTERNS = [
+  /PASTE_/i, /YOUR_DB_PASSWORD/i, /YOUR_REGION/i,
+  /REPLACE_WITH_/i, /abcdefghijklmnop/i,
+];
+(function validateEnv() {
+  const errors = [];
+  for (const key of REQUIRED_ENV) {
+    const val = process.env[key];
+    if (!val) errors.push(`Missing env var: ${key}`);
+    else if (PLACEHOLDER_PATTERNS.some(p => p.test(val))) {
+      errors.push(`Env var ${key} still contains a placeholder`);
+    }
+  }
+  if (errors.length) {
+    console.error('❌ Environment validation failed:\n' + errors.map(e => '  - ' + e).join('\n'));
+    process.exit(1);
+  }
+  console.log('✅ Environment validated');
+})();
+
+// ===========================================================================
+// 1. IMPORTS
 // ===========================================================================
 const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
 const express = require('express');
 const session = require('express-session');
+const pgSession = require('connect-pg-simple')(session);
 const bcrypt = require('bcryptjs');
-
-let Database;
-try { Database = require('better-sqlite3'); } catch { Database = null; }
+const { Pool } = require('pg');
 
 let puppeteer;
 try { puppeteer = require('puppeteer'); } catch { puppeteer = null; }
 
 let chalk;
 try { chalk = require('chalk'); } catch {
-  // Fallback no-op colouring if chalk isn't installed
   const id = (s) => s;
   chalk = new Proxy({}, { get: () => id });
 }
 
 const PORT = process.env.PORT || 3000;
 const NODE_ENV = process.env.NODE_ENV || 'development';
+const IS_PROD = NODE_ENV === 'production';
 
 const DATA_DIR   = path.join(__dirname, 'data');
 const BACKUP_DIR = path.join(DATA_DIR, 'backups');
 const EXPORT_DIR = path.join(DATA_DIR, 'exports');
-const DB_PATH    = path.join(DATA_DIR, 'hostel-space-finder.db');
 
 // ===========================================================================
-// 1. utils/logger.js — consistent logger (redacts secrets)
+// 2. utils/logger.js
 // ===========================================================================
 const logger = (() => {
-  const SENSITIVE = ['password', 'passwd', 'token', 'secret', 'authorization', 'cookie'];
+  const SENSITIVE = ['password', 'passwd', 'token', 'secret', 'authorization', 'cookie', 'apikey'];
   const redact = (obj) => {
     if (!obj || typeof obj !== 'object') return obj;
     const clone = Array.isArray(obj) ? [] : {};
@@ -72,12 +95,12 @@ const logger = (() => {
     info:  (m, x) => write('INFO',  m, x),
     warn:  (m, x) => write('WARN',  m, x),
     error: (m, x) => write('ERROR', m, x),
-    debug: (m, x) => NODE_ENV === 'development' && write('DEBUG', m, x),
+    debug: (m, x) => !IS_PROD && write('DEBUG', m, x),
   };
 })();
 
 // ===========================================================================
-// 2. utils/dates.js
+// 3. utils/dates.js
 // ===========================================================================
 const dates = {
   now:     () => new Date().toISOString(),
@@ -88,21 +111,53 @@ const dates = {
 };
 
 // ===========================================================================
-// 3. config/hostelConfig.js — YOUR REAL CONFIG (verbatim shape)
+// 4. DATABASE — Postgres pool (Supabase)
 // ===========================================================================
-/**
- * Structure:
- *   hostelConfig[CampusName][boys|girls][flats|floors][HostelName] = {
- *     hostel_id,                    // numeric id used by the BIU portal
- *     flats: <n> | [flatNos],       // if flat-based
- *     roomsPerFlat: { default, exceptions },
- *     floors: ["A","B",...],        // if floor-based
- *     roomsPerFloor: <n> | { A: n, B: n },
- *     bedsPerRoom: <n>
- *   }
- */
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: { rejectUnauthorized: false },
+  max: 10,
+  idleTimeoutMillis: 30000,
+  connectionTimeoutMillis: 15000,
+});
+
+pool.on('error', (err) => logger.error('Unexpected pool error', { err: err.message }));
+
+async function initDatabase() {
+  try {
+    const { rows } = await pool.query('SELECT NOW() AS now');
+    logger.info('Postgres connected', { now: rows[0].now });
+
+    // Ensure session table exists (safe to run on every boot)
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS "session" (
+        "sid" varchar NOT NULL COLLATE "default",
+        "sess" json NOT NULL,
+        "expire" timestamp(6) NOT NULL,
+        CONSTRAINT "session_pkey" PRIMARY KEY ("sid")
+      );
+    `);
+    await pool.query(`CREATE INDEX IF NOT EXISTS "IDX_session_expire" ON "session" ("expire");`);
+
+    // Ensure settings table exists (used before first seed)
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS settings (
+        key   TEXT PRIMARY KEY,
+        value TEXT NOT NULL
+      );
+    `);
+
+    logger.info('Session + settings tables verified');
+  } catch (err) {
+    logger.error('Database connection failed', { err: err.message });
+    process.exit(1);
+  }
+}
+
+// ===========================================================================
+// 5. config/hostelConfig.js — REAL CONFIG
+// ===========================================================================
 const hostelConfig = {
-  // ==================== LEGACY (OKHA) CAMPUS ====================
   Legacy: {
     boys: {
       flats: {
@@ -134,8 +189,6 @@ const hostelConfig = {
       },
     },
   },
-
-  // ==================== HERITAGE CAMPUS ====================
   Heritage: {
     boys: {
       floors: {
@@ -143,17 +196,17 @@ const hostelConfig = {
         "PEACE HOSTEL":       { hostel_id: 21, floors: ["A", "B", "C", "D"], roomsPerFloor: { A: 13, B: 15, C: 15, D: 15 }, bedsPerRoom: 4 },
       },
       flats: {
-        "VALOR HOSTEL":               { hostel_id: 18, flats: 9, roomsPerFlat: { default: 4 }, bedsPerRoom: 4 },
+        "VALOR HOSTEL":                 { hostel_id: 18, flats: 9, roomsPerFlat: { default: 4 }, bedsPerRoom: 4 },
         "BISHOP'S COURT HOSTEL (MALE)": { hostel_id: 19, flats: 3, roomsPerFlat: { default: 4 }, bedsPerRoom: 4 },
       },
     },
     girls: {
       floors: {
-        "FAITH HOSTEL":         { hostel_id: 12, floors: ["A", "B", "C", "D"], roomsPerFloor: { A: 16, B: 18, C: 16, D: 10 }, bedsPerRoom: 4 },
-        "VIRTUE HOSTEL":        { hostel_id: 13, floors: ["E", "F", "G", "H"], roomsPerFloor: { E: 19, F: 19, G: 19, H: 12 }, bedsPerRoom: 4 },
-        "WISDOM GIRLS HOSTEL":  { hostel_id: 14, floors: ["B", "C"],           roomsPerFloor: { B: 13, C: 13 },         bedsPerRoom: 4 },
-        "AGAPE HOSTEL":         { hostel_id: 15, floors: ["A", "B", "C"],      roomsPerFloor: { A: 16, B: 16, C: 16 },  bedsPerRoom: 4 },
-        "OVERCOMERS HOSTEL":    { hostel_id: 16, floors: ["A", "B", "C", "D"], roomsPerFloor: { A: 14, B: 16, C: 16, D: 16 }, bedsPerRoom: 4 },
+        "FAITH HOSTEL":        { hostel_id: 12, floors: ["A", "B", "C", "D"], roomsPerFloor: { A: 16, B: 18, C: 16, D: 10 }, bedsPerRoom: 4 },
+        "VIRTUE HOSTEL":       { hostel_id: 13, floors: ["E", "F", "G", "H"], roomsPerFloor: { E: 19, F: 19, G: 19, H: 12 }, bedsPerRoom: 4 },
+        "WISDOM GIRLS HOSTEL": { hostel_id: 14, floors: ["B", "C"],           roomsPerFloor: { B: 13, C: 13 },         bedsPerRoom: 4 },
+        "AGAPE HOSTEL":        { hostel_id: 15, floors: ["A", "B", "C"],      roomsPerFloor: { A: 16, B: 16, C: 16 },  bedsPerRoom: 4 },
+        "OVERCOMERS HOSTEL":   { hostel_id: 16, floors: ["A", "B", "C", "D"], roomsPerFloor: { A: 14, B: 16, C: 16, D: 16 }, bedsPerRoom: 4 },
       },
       flats: {
         "BISHOP'S COURT HOSTEL (FEMALE)": {
@@ -165,18 +218,6 @@ const hostelConfig = {
   },
 };
 
-// ---------------------------------------------------------------------------
-// 3b. Adapters: flatten your nested config into the DB/inventory shape
-// ---------------------------------------------------------------------------
-
-/**
- * Yields a flat list of hostels from the nested hostelConfig.
- * Each entry: { campusId, campusName, gender, structure, hostelId,
- *               hostelName, portalId, units[], rooms[] }
- *   - structure is 'flats' or 'floors'
- *   - units[] are the flat numbers or floor letters as strings
- *   - rooms[] is generated from roomsPerFlat / roomsPerFloor
- */
 function flattenHostelConfig() {
   const out = [];
   for (const campusName of Object.keys(hostelConfig)) {
@@ -186,11 +227,9 @@ function flattenHostelConfig() {
       for (const structure of ['flats', 'floors']) {
         const group = campus[gender][structure];
         if (!group) continue;
-
         for (const hostelName of Object.keys(group)) {
           const def = group[hostelName];
           const units = [];
-
           if (structure === 'flats') {
             const flatNos = Array.isArray(def.flats)
               ? def.flats
@@ -200,29 +239,27 @@ function flattenHostelConfig() {
                 def.roomsPerFlat && def.roomsPerFlat.exceptions && def.roomsPerFlat.exceptions[fno] != null
                   ? def.roomsPerFlat.exceptions[fno]
                   : (def.roomsPerFlat && def.roomsPerFlat.default) || 4;
-              const rooms = Array.from({ length: roomCount }, (_, i) => `ROOM ${i + 1}`);
-              units.push({ unitId: `FLAT ${fno}`, unitName: `Flat ${fno}`, rooms });
+              units.push({
+                unitId: `FLAT ${fno}`, unitName: `Flat ${fno}`,
+                rooms: Array.from({ length: roomCount }, (_, i) => `ROOM ${i + 1}`),
+              });
             }
           } else {
-            const floors = def.floors || [];
-            for (const fl of floors) {
-              const roomCount =
-                typeof def.roomsPerFloor === 'number'
-                  ? def.roomsPerFloor
-                  : (def.roomsPerFloor && def.roomsPerFloor[fl]) || 0;
-              const rooms = Array.from({ length: roomCount }, (_, i) => `ROOM ${i + 1}`);
-              units.push({ unitId: `${fl} FLOOR`, unitName: `${fl} Floor`, rooms });
+            for (const fl of (def.floors || [])) {
+              const roomCount = typeof def.roomsPerFloor === 'number'
+                ? def.roomsPerFloor
+                : (def.roomsPerFloor && def.roomsPerFloor[fl]) || 0;
+              units.push({
+                unitId: `${fl} FLOOR`, unitName: `${fl} Floor`,
+                rooms: Array.from({ length: roomCount }, (_, i) => `ROOM ${i + 1}`),
+              });
             }
           }
-
           out.push({
             campusId: campusName.toLowerCase(),
-            campusName,
-            gender,
-            structure,
+            campusName, gender, structure,
             hostelId: `${campusName.toLowerCase()}-${hostelName.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`,
-            hostelName,
-            portalId: def.hostel_id,
+            hostelName, portalId: def.hostel_id,
             bedsPerRoom: def.bedsPerRoom || 4,
             units,
           });
@@ -233,568 +270,263 @@ function flattenHostelConfig() {
   return out;
 }
 
-function findHostelInConfig({ campusId, hostelId, hostelName }) {
-  const all = flattenHostelConfig();
-  return all.find(h =>
-    (hostelId && h.hostelId === hostelId) ||
-    (hostelName && h.hostelName.toUpperCase() === String(hostelName).toUpperCase()) ||
-    (hostelId && h.portalId === hostelId) ||
-    (campusId && h.campusId === String(campusId).toLowerCase() && !hostelId && !hostelName)
-  ) || null;
-}
-
 // ===========================================================================
-// 4. database/connection.js + migrations + seed
-// ===========================================================================
-function ensureDirs() {
-  for (const d of [DATA_DIR, BACKUP_DIR, EXPORT_DIR]) {
-    if (!fs.existsSync(d)) fs.mkdirSync(d, { recursive: true });
-  }
-}
-
-let db = null;
-
-function initDatabase() {
-  if (!Database) {
-    logger.warn('better-sqlite3 not installed — using in-memory fallback.');
-    return initMemoryStore();
-  }
-  db = new Database(DB_PATH);
-  db.pragma('journal_mode = WAL');
-  db.pragma('foreign_keys = ON');
-  runMigrations();
-  seedInitialData();
-  logger.info('SQLite database ready', { path: DB_PATH });
-  return db;
-}
-
-function runMigrations() {
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS users (
-      id            INTEGER PRIMARY KEY AUTOINCREMENT,
-      username      TEXT UNIQUE NOT NULL,
-      password_hash TEXT NOT NULL,
-      role          TEXT NOT NULL DEFAULT 'admin',
-      created_at    TEXT NOT NULL
-    );
-
-    CREATE TABLE IF NOT EXISTS campuses (
-      id   TEXT PRIMARY KEY,
-      name TEXT NOT NULL
-    );
-
-    CREATE TABLE IF NOT EXISTS hostels (
-      id             TEXT PRIMARY KEY,
-      campus_id      TEXT NOT NULL,
-      name           TEXT NOT NULL,
-      gender         TEXT,
-      structure      TEXT,
-      portal_id      INTEGER,
-      FOREIGN KEY (campus_id) REFERENCES campuses(id)
-    );
-
-    CREATE TABLE IF NOT EXISTS rooms (
-      id         TEXT PRIMARY KEY,
-      hostel_id  TEXT NOT NULL,
-      parent_id  TEXT,
-      name       TEXT NOT NULL,
-      bed_spaces INTEGER NOT NULL DEFAULT 0,
-      FOREIGN KEY (hostel_id) REFERENCES hostels(id)
-    );
-
-    CREATE TABLE IF NOT EXISTS bed_spaces (
-      id      TEXT PRIMARY KEY,
-      room_id TEXT NOT NULL,
-      label   TEXT NOT NULL,
-      FOREIGN KEY (room_id) REFERENCES rooms(id)
-    );
-
-    CREATE TABLE IF NOT EXISTS students (
-      id             INTEGER PRIMARY KEY AUTOINCREMENT,
-      matric_number  TEXT UNIQUE NOT NULL,
-      full_name      TEXT NOT NULL,
-      gender         TEXT,
-      level          TEXT,
-      department     TEXT,
-      created_at     TEXT NOT NULL
-    );
-
-    CREATE TABLE IF NOT EXISTS allocations (
-      id           INTEGER PRIMARY KEY AUTOINCREMENT,
-      student_id   INTEGER NOT NULL,
-      campus_id    TEXT,
-      hostel_id    TEXT,
-      room_id      TEXT,
-      bed_space_id TEXT,
-      reference    TEXT,
-      status       TEXT NOT NULL DEFAULT 'active',
-      created_at   TEXT NOT NULL,
-      FOREIGN KEY (student_id) REFERENCES students(id)
-    );
-
-    CREATE TABLE IF NOT EXISTS scans (
-      id              INTEGER PRIMARY KEY AUTOINCREMENT,
-      started_at      TEXT NOT NULL,
-      finished_at     TEXT,
-      status          TEXT NOT NULL,
-      scope           TEXT,
-      campus_id       TEXT,
-      hostel_id       TEXT,
-      available_count INTEGER DEFAULT 0,
-      occupied_count  INTEGER DEFAULT 0,
-      rooms_scanned   INTEGER DEFAULT 0,
-      error           TEXT
-    );
-
-    CREATE TABLE IF NOT EXISTS scan_results (
-      id           INTEGER PRIMARY KEY AUTOINCREMENT,
-      scan_id      INTEGER NOT NULL,
-      campus_id    TEXT,
-      hostel_id    TEXT,
-      room_id      TEXT,
-      bed_space_id TEXT,
-      status       TEXT,
-      raw          TEXT,
-      FOREIGN KEY (scan_id) REFERENCES scans(id)
-    );
-
-    CREATE TABLE IF NOT EXISTS protected_spaces (
-      id           INTEGER PRIMARY KEY AUTOINCREMENT,
-      bed_space_id TEXT NOT NULL,
-      room_id      TEXT,
-      hostel_id    TEXT,
-      campus_id    TEXT,
-      status       TEXT NOT NULL,
-      holder_name  TEXT,
-      holder_ref   TEXT,
-      notes        TEXT,
-      created_at   TEXT NOT NULL,
-      released_at  TEXT
-    );
-
-    CREATE TABLE IF NOT EXISTS settings (
-      key   TEXT PRIMARY KEY,
-      value TEXT NOT NULL
-    );
-
-    CREATE INDEX IF NOT EXISTS idx_scan_results_scan ON scan_results(scan_id);
-    CREATE INDEX IF NOT EXISTS idx_allocations_student ON allocations(student_id);
-    CREATE INDEX IF NOT EXISTS idx_protected_status ON protected_spaces(status);
-    CREATE INDEX IF NOT EXISTS idx_scans_status ON scans(status);
-  `);
-  logger.info('Migrations applied.');
-}
-
-function seedInitialData() {
-  const now = dates.now();
-
-  // Seed campuses / hostels / rooms / beds from the real hostelConfig
-  const insCampus = db.prepare('INSERT OR IGNORE INTO campuses (id, name) VALUES (?, ?)');
-  const insHostel = db.prepare('INSERT OR IGNORE INTO hostels (id, campus_id, name, gender, structure, portal_id) VALUES (?, ?, ?, ?, ?, ?)');
-  const insRoom   = db.prepare('INSERT OR IGNORE INTO rooms (id, hostel_id, parent_id, name, bed_spaces) VALUES (?, ?, ?, ?, ?)');
-  const insBed    = db.prepare('INSERT OR IGNORE INTO bed_spaces (id, room_id, label) VALUES (?, ?, ?)');
-
-  const flat = flattenHostelConfig();
-  const seenCampuses = new Set();
-  for (const h of flat) {
-    if (!seenCampuses.has(h.campusId)) {
-      insCampus.run(h.campusId, h.campusName);
-      seenCampuses.add(h.campusId);
-    }
-    insHostel.run(h.hostelId, h.campusId, h.hostelName, h.gender, h.structure, h.portalId);
-    for (const unit of h.units) {
-      for (const roomName of unit.rooms) {
-        const roomId = `${h.hostelId}-${unit.unitId}-${roomName}`.replace(/\s+/g, '_');
-        insRoom.run(roomId, h.hostelId, unit.unitId, roomName, h.bedsPerRoom);
-        for (let i = 1; i <= h.bedsPerRoom; i++) {
-          insBed.run(`${roomId}-B${i}`, roomId, `Bed ${i}`);
-        }
-      }
-    }
-  }
-
-  // Default admin
-  if (!db.prepare('SELECT id FROM users WHERE username = ?').get('admin')) {
-    db.prepare('INSERT INTO users (username, password_hash, role, created_at) VALUES (?, ?, ?, ?)')
-      .run('admin', bcrypt.hashSync('admin123', 10), 'admin', now);
-    logger.warn('Seeded default admin (admin / admin123) — change in production!');
-  }
-
-  // Defaults
-  const defaults = {
-    'app.name': 'Hostel Space Finder',
-    'scanner.headless': 'false',
-    'scanner.timeoutMs': '60000',
-    'scanner.maxConcurrent': '1',
-    'scanner.retryCount': '6',
-    'scanner.randomDelayMin': '700',
-    'scanner.randomDelayMax': '1600',
-    'portal.baseURL': process.env.BIU_PORTAL_URL || 'https://portal.biu.edu.ng',
-    'portal.loginPath': '/Students/Login',
-    'portal.hostelPath': '/Students/Hostels',
-    'portal.username': '',
-    'portal.password.enc': '',
-    'backup.retentionDays': '30',
-    'backup.autoEnabled': 'false',
-  };
-  const insSet = db.prepare('INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)');
-  for (const [k, v] of Object.entries(defaults)) insSet.run(k, v);
-
-  logger.info('Seed data verified.', { hostels: flat.length });
-}
-
-// In-memory fallback -------------------------------------------------------
-function initMemoryStore() {
-  const store = {
-    users: [], campuses: [], hostels: [], rooms: [], bed_spaces: [],
-    students: [], allocations: [], scans: [], scan_results: [],
-    protected_spaces: [], settings: {},
-  };
-  store.users.push({
-    id: 1, username: 'admin',
-    password_hash: bcrypt.hashSync('admin123', 10),
-    role: 'admin', created_at: dates.now(),
-  });
-  const flat = flattenHostelConfig();
-  const seen = new Set();
-  for (const h of flat) {
-    if (!seen.has(h.campusId)) {
-      store.campuses.push({ id: h.campusId, name: h.campusName });
-      seen.add(h.campusId);
-    }
-    store.hostels.push({
-      id: h.hostelId, campus_id: h.campusId, name: h.hostelName,
-      gender: h.gender, structure: h.structure, portal_id: h.portalId,
-    });
-    for (const unit of h.units) {
-      for (const roomName of unit.rooms) {
-        const roomId = `${h.hostelId}-${unit.unitId}-${roomName}`.replace(/\s+/g, '_');
-        store.rooms.push({
-          id: roomId, hostel_id: h.hostelId, parent_id: unit.unitId,
-          name: roomName, bed_spaces: h.bedsPerRoom,
-        });
-        for (let i = 1; i <= h.bedsPerRoom; i++) {
-          store.bed_spaces.push({ id: `${roomId}-B${i}`, room_id: roomId, label: `Bed ${i}` });
-        }
-      }
-    }
-  }
-  db = { _memory: store };
-  logger.info('In-memory store initialised.', { hostels: flat.length });
-  return db;
-}
-
-const isMemory = () => db && db._memory;
-const mem = () => db._memory;
-
-// ===========================================================================
-// 5. database/repositories/
+// 6. REPOSITORIES — Postgres (async)
 // ===========================================================================
 const repos = {
   users: {
-    findByUsername(u) {
-      if (isMemory()) return mem().users.find(x => x.username === u) || null;
-      return db.prepare('SELECT * FROM users WHERE username = ?').get(u) || null;
+    async findByUsername(username) {
+      const { rows } = await pool.query('SELECT * FROM users WHERE username = $1', [username]);
+      return rows[0] || null;
     },
-    findById(id) {
-      if (isMemory()) {
-        const r = mem().users.find(x => x.id === id);
-        if (!r) return null;
-        const { password_hash, ...safe } = r;
-        return safe;
-      }
-      return db.prepare('SELECT id, username, role, created_at FROM users WHERE id = ?').get(id) || null;
+    async findById(id) {
+      const { rows } = await pool.query(
+        'SELECT id, username, role, created_at FROM users WHERE id = $1', [id]);
+      return rows[0] || null;
     },
   },
 
   campuses: {
-    all() {
-      if (isMemory()) return mem().campuses;
-      return db.prepare('SELECT * FROM campuses').all();
+    async all() {
+      const { rows } = await pool.query('SELECT * FROM campuses ORDER BY name');
+      return rows;
     },
   },
+
   hostels: {
-    byCampus(campusId) {
-      if (isMemory()) return mem().hostels.filter(h => h.campus_id === campusId);
-      return db.prepare('SELECT * FROM hostels WHERE campus_id = ?').all(campusId);
+    async all() {
+      const { rows } = await pool.query('SELECT * FROM hostels ORDER BY name');
+      return rows;
     },
-    find(id) {
-      if (isMemory()) return mem().hostels.find(h => h.id === id) || null;
-      return db.prepare('SELECT * FROM hostels WHERE id = ?').get(id) || null;
+    async byCampus(campusId) {
+      const { rows } = await pool.query(
+        'SELECT * FROM hostels WHERE campus_id = $1 ORDER BY name', [campusId]);
+      return rows;
     },
-    all() {
-      if (isMemory()) return mem().hostels;
-      return db.prepare('SELECT * FROM hostels').all();
+    async find(id) {
+      const { rows } = await pool.query('SELECT * FROM hostels WHERE id = $1', [id]);
+      return rows[0] || null;
     },
   },
+
   rooms: {
-    byHostel(hostelId) {
-      if (isMemory()) return mem().rooms.filter(r => r.hostel_id === hostelId);
-      return db.prepare('SELECT * FROM rooms WHERE hostel_id = ?').all(hostelId);
+    async byHostel(hostelId) {
+      const { rows } = await pool.query(
+        'SELECT * FROM rooms WHERE hostel_id = $1 ORDER BY id', [hostelId]);
+      return rows;
     },
   },
+
   beds: {
-    byRoom(roomId) {
-      if (isMemory()) return mem().bed_spaces.filter(b => b.room_id === roomId);
-      return db.prepare('SELECT * FROM bed_spaces WHERE room_id = ?').all(roomId);
+    async byRoom(roomId) {
+      const { rows } = await pool.query(
+        'SELECT * FROM bed_spaces WHERE room_id = $1 ORDER BY label', [roomId]);
+      return rows;
     },
   },
 
   students: {
-    search({ q, hostelId, roomId, matric } = {}) {
-      if (isMemory()) {
-        let list = mem().students;
-        if (matric) list = list.filter(s => s.matric_number === matric);
-        if (q) {
-          const lc = q.toLowerCase();
-          list = list.filter(s =>
-            s.full_name.toLowerCase().includes(lc) ||
-            s.matric_number.toLowerCase().includes(lc));
-        }
-        if (hostelId || roomId) {
-          const allocs = mem().allocations.filter(a =>
-            (!hostelId || a.hostel_id === hostelId) &&
-            (!roomId || a.room_id === roomId));
-          const ids = new Set(allocs.map(a => a.student_id));
-          list = list.filter(s => ids.has(s.id));
-        }
-        return list;
-      }
+    async search({ q, hostelId, roomId, matric } = {}) {
       const where = [];
       const params = [];
-      if (matric) { where.push('s.matric_number = ?'); params.push(matric); }
+      if (matric) { params.push(matric); where.push(`s.matric_number = $${params.length}`); }
       if (q) {
-        where.push('(s.full_name LIKE ? OR s.matric_number LIKE ?)');
         params.push(`%${q}%`, `%${q}%`);
+        where.push(`(s.full_name ILIKE $${params.length - 1} OR s.matric_number ILIKE $${params.length})`);
       }
       let sql = 'SELECT DISTINCT s.* FROM students s';
       if (hostelId || roomId) {
         sql += ' JOIN allocations a ON a.student_id = s.id';
-        if (hostelId) { where.push('a.hostel_id = ?'); params.push(hostelId); }
-        if (roomId)   { where.push('a.room_id = ?');    params.push(roomId); }
+        if (hostelId) { params.push(hostelId); where.push(`a.hostel_id = $${params.length}`); }
+        if (roomId)   { params.push(roomId);   where.push(`a.room_id = $${params.length}`); }
       }
       if (where.length) sql += ' WHERE ' + where.join(' AND ');
       sql += ' ORDER BY s.full_name LIMIT 500';
-      return db.prepare(sql).all(...params);
+      const { rows } = await pool.query(sql, params);
+      return rows;
     },
-    create({ matric_number, full_name, gender, level, department }) {
-      const now = dates.now();
-      if (isMemory()) {
-        const row = { id: mem().students.length + 1, matric_number, full_name, gender, level, department, created_at: now };
-        mem().students.push(row);
-        return row;
-      }
-      const info = db.prepare(`
-        INSERT INTO students (matric_number, full_name, gender, level, department, created_at)
-        VALUES (?, ?, ?, ?, ?, ?)
-      `).run(matric_number, full_name, gender || null, level || null, department || null, now);
-      return db.prepare('SELECT * FROM students WHERE id = ?').get(info.lastInsertRowid);
+    async create({ matric_number, full_name, gender, level, department }) {
+      const { rows } = await pool.query(
+        `INSERT INTO students (matric_number, full_name, gender, level, department)
+         VALUES ($1, $2, $3, $4, $5) RETURNING *`,
+        [matric_number, full_name, gender || null, level || null, department || null]);
+      return rows[0];
     },
   },
 
   allocations: {
-    active() {
-      if (isMemory()) return mem().allocations.filter(a => a.status === 'active');
-      return db.prepare("SELECT * FROM allocations WHERE status = 'active'").all();
+    async active() {
+      const { rows } = await pool.query("SELECT * FROM allocations WHERE status = 'active'");
+      return rows;
     },
-    byStudent(studentId) {
-      if (isMemory()) return mem().allocations.filter(a => a.student_id === studentId);
-      return db.prepare('SELECT * FROM allocations WHERE student_id = ?').all(studentId);
+    async byStudent(studentId) {
+      const { rows } = await pool.query(
+        'SELECT * FROM allocations WHERE student_id = $1 ORDER BY id DESC', [studentId]);
+      return rows;
     },
-    byBed(bedSpaceId) {
-      if (isMemory()) return mem().allocations.find(a => a.bed_space_id === bedSpaceId && a.status === 'active') || null;
-      return db.prepare("SELECT * FROM allocations WHERE bed_space_id = ? AND status = 'active'").get(bedSpaceId) || null;
+    async byBed(bedSpaceId) {
+      const { rows } = await pool.query(
+        "SELECT * FROM allocations WHERE bed_space_id = $1 AND status = 'active'",
+        [bedSpaceId]);
+      return rows[0] || null;
     },
-    create(a) {
-      const now = dates.now();
-      if (isMemory()) {
-        const row = { id: mem().allocations.length + 1, status: 'active', created_at: now, ...a };
-        mem().allocations.push(row);
-        return row;
-      }
-      const info = db.prepare(`
-        INSERT INTO allocations
-          (student_id, campus_id, hostel_id, room_id, bed_space_id, reference, status, created_at)
-        VALUES (?, ?, ?, ?, ?, ?, 'active', ?)
-      `).run(a.student_id, a.campus_id || null, a.hostel_id || null,
-             a.room_id || null, a.bed_space_id || null, a.reference || null, now);
-      return db.prepare('SELECT * FROM allocations WHERE id = ?').get(info.lastInsertRowid);
+    async create(a) {
+      const { rows } = await pool.query(
+        `INSERT INTO allocations
+           (student_id, campus_id, hostel_id, room_id, bed_space_id, reference, status)
+         VALUES ($1, $2, $3, $4, $5, $6, 'active') RETURNING *`,
+        [a.student_id, a.campus_id || null, a.hostel_id || null,
+         a.room_id || null, a.bed_space_id || null, a.reference || null]);
+      return rows[0];
     },
   },
 
   scans: {
-    create({ scope, campus_id, hostel_id }) {
-      const now = dates.now();
-      if (isMemory()) {
-        const row = {
-          id: mem().scans.length + 1, started_at: now, finished_at: null,
-          status: 'queued', scope: scope || null,
-          campus_id: campus_id || null, hostel_id: hostel_id || null,
-          available_count: 0, occupied_count: 0, rooms_scanned: 0, error: null,
-        };
-        mem().scans.push(row);
-        return row;
-      }
-      const info = db.prepare(`
-        INSERT INTO scans (started_at, status, scope, campus_id, hostel_id)
-        VALUES (?, 'queued', ?, ?, ?)
-      `).run(now, scope || null, campus_id || null, hostel_id || null);
-      return db.prepare('SELECT * FROM scans WHERE id = ?').get(info.lastInsertRowid);
+    async create({ scope, campus_id, hostel_id }) {
+      const { rows } = await pool.query(
+        `INSERT INTO scans (status, scope, campus_id, hostel_id)
+         VALUES ('queued', $1, $2, $3) RETURNING *`,
+        [scope || null, campus_id || null, hostel_id || null]);
+      return rows[0];
     },
-    update(id, patch) {
-      if (isMemory()) {
-        const row = mem().scans.find(s => s.id === id);
-        if (row) Object.assign(row, patch);
-        return row;
-      }
+    async update(id, patch) {
       const fields = Object.keys(patch);
-      if (!fields.length) return db.prepare('SELECT * FROM scans WHERE id = ?').get(id);
-      const sql = `UPDATE scans SET ${fields.map(f => `${f} = ?`).join(', ')} WHERE id = ?`;
-      db.prepare(sql).run(...fields.map(f => patch[f]), id);
-      return db.prepare('SELECT * FROM scans WHERE id = ?').get(id);
+      if (!fields.length) return this.find(id);
+      const params = fields.map(f => patch[f]);
+      params.push(id);
+      const sql = `UPDATE scans SET ${fields.map((f, i) => `${f} = $${i + 1}`).join(', ')}
+                   WHERE id = $${params.length} RETURNING *`;
+      const { rows } = await pool.query(sql, params);
+      return rows[0];
     },
-    find(id) {
-      if (isMemory()) return mem().scans.find(s => s.id === id) || null;
-      return db.prepare('SELECT * FROM scans WHERE id = ?').get(id) || null;
+    async find(id) {
+      const { rows } = await pool.query('SELECT * FROM scans WHERE id = $1', [id]);
+      return rows[0] || null;
     },
-    latestSuccessful() {
-      if (isMemory()) {
-        return mem().scans.filter(s => s.status === 'success').sort((a, b) => b.id - a.id)[0] || null;
-      }
-      return db.prepare("SELECT * FROM scans WHERE status = 'success' ORDER BY id DESC LIMIT 1").get() || null;
+    async latestSuccessful() {
+      const { rows } = await pool.query(
+        "SELECT * FROM scans WHERE status = 'success' ORDER BY id DESC LIMIT 1");
+      return rows[0] || null;
     },
-    list(limit = 50) {
-      if (isMemory()) return mem().scans.slice().sort((a, b) => b.id - a.id).slice(0, limit);
-      return db.prepare('SELECT * FROM scans ORDER BY id DESC LIMIT ?').all(limit);
+    async list(limit = 50) {
+      const { rows } = await pool.query(
+        'SELECT * FROM scans ORDER BY id DESC LIMIT $1', [limit]);
+      return rows;
     },
   },
 
   scanResults: {
-    insertMany(scanId, rows) {
-      if (isMemory()) {
+    async insertMany(scanId, rows) {
+      if (!rows.length) return 0;
+      const client = await pool.connect();
+      try {
+        await client.query('BEGIN');
         for (const r of rows) {
-          mem().scan_results.push({ id: mem().scan_results.length + 1, scan_id: scanId, ...r });
+          await client.query(
+            `INSERT INTO scan_results
+               (scan_id, campus_id, hostel_id, room_id, bed_space_id, status, raw)
+             VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+            [scanId, r.campus_id || null, r.hostel_id || null,
+             r.room_id || null, r.bed_space_id || null,
+             r.status || 'unknown',
+             r.raw ? JSON.stringify(r.raw) : null]);
         }
+        await client.query('COMMIT');
         return rows.length;
+      } catch (e) {
+        await client.query('ROLLBACK');
+        throw e;
+      } finally {
+        client.release();
       }
-      const stmt = db.prepare(`
-        INSERT INTO scan_results
-          (scan_id, campus_id, hostel_id, room_id, bed_space_id, status, raw)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
-      `);
-      const tx = db.transaction(items => {
-        for (const r of items) {
-          stmt.run(scanId, r.campus_id || null, r.hostel_id || null,
-                   r.room_id || null, r.bed_space_id || null,
-                   r.status || 'unknown',
-                   r.raw ? JSON.stringify(r.raw) : null);
-        }
-      });
-      tx(rows);
-      return rows.length;
     },
-    byScan(scanId) {
-      if (isMemory()) return mem().scan_results.filter(r => r.scan_id === scanId);
-      return db.prepare('SELECT * FROM scan_results WHERE scan_id = ?').all(scanId);
+    async byScan(scanId) {
+      const { rows } = await pool.query(
+        'SELECT * FROM scan_results WHERE scan_id = $1', [scanId]);
+      return rows;
     },
   },
 
   protectedSpaces: {
-    all(filter = {}) {
-      if (isMemory()) {
-        return mem().protected_spaces.filter(p =>
-          (!filter.status || p.status === filter.status) &&
-          (!filter.hostelId || p.hostel_id === filter.hostelId) &&
-          (!filter.activeOnly || !p.released_at));
-      }
+    async all(filter = {}) {
       const where = [];
       const params = [];
-      if (filter.status)     { where.push('status = ?');     params.push(filter.status); }
-      if (filter.hostelId)   { where.push('hostel_id = ?');  params.push(filter.hostelId); }
+      if (filter.status)     { params.push(filter.status);    where.push(`status = $${params.length}`); }
+      if (filter.hostelId)   { params.push(filter.hostelId);  where.push(`hostel_id = $${params.length}`); }
       if (filter.activeOnly) { where.push('released_at IS NULL'); }
       let sql = 'SELECT * FROM protected_spaces';
       if (where.length) sql += ' WHERE ' + where.join(' AND ');
       sql += ' ORDER BY id DESC';
-      return db.prepare(sql).all(...params);
+      const { rows } = await pool.query(sql, params);
+      return rows;
     },
-    byBed(bedSpaceId) {
-      if (isMemory()) return mem().protected_spaces.find(p => p.bed_space_id === bedSpaceId && !p.released_at) || null;
-      return db.prepare('SELECT * FROM protected_spaces WHERE bed_space_id = ? AND released_at IS NULL').get(bedSpaceId) || null;
+    async byBed(bedSpaceId) {
+      const { rows } = await pool.query(
+        'SELECT * FROM protected_spaces WHERE bed_space_id = $1 AND released_at IS NULL',
+        [bedSpaceId]);
+      return rows[0] || null;
     },
-    create(p) {
-      const now = dates.now();
-      if (isMemory()) {
-        const row = { id: mem().protected_spaces.length + 1, created_at: now, released_at: null, ...p };
-        mem().protected_spaces.push(row);
-        return row;
-      }
-      const info = db.prepare(`
-        INSERT INTO protected_spaces
-          (bed_space_id, room_id, hostel_id, campus_id, status, holder_name, holder_ref, notes, created_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `).run(p.bed_space_id, p.room_id || null, p.hostel_id || null,
-             p.campus_id || null, p.status, p.holder_name || null,
-             p.holder_ref || null, p.notes || null, now);
-      return db.prepare('SELECT * FROM protected_spaces WHERE id = ?').get(info.lastInsertRowid);
+    async create(p) {
+      const { rows } = await pool.query(
+        `INSERT INTO protected_spaces
+           (bed_space_id, room_id, hostel_id, campus_id, status, holder_name, holder_ref, notes)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
+        [p.bed_space_id, p.room_id || null, p.hostel_id || null,
+         p.campus_id || null, p.status, p.holder_name || null,
+         p.holder_ref || null, p.notes || null]);
+      return rows[0];
     },
-    release(id) {
-      const now = dates.now();
-      if (isMemory()) {
-        const row = mem().protected_spaces.find(p => p.id === id);
-        if (row) row.released_at = now;
-        return row;
-      }
-      db.prepare('UPDATE protected_spaces SET released_at = ? WHERE id = ?').run(now, id);
-      return db.prepare('SELECT * FROM protected_spaces WHERE id = ?').get(id);
+    async release(id) {
+      const { rows } = await pool.query(
+        'UPDATE protected_spaces SET released_at = NOW() WHERE id = $1 RETURNING *',
+        [id]);
+      return rows[0];
     },
-    update(id, patch) {
-      if (isMemory()) {
-        const row = mem().protected_spaces.find(p => p.id === id);
-        if (row) Object.assign(row, patch);
-        return row;
-      }
+    async update(id, patch) {
       const fields = Object.keys(patch);
-      if (!fields.length) return db.prepare('SELECT * FROM protected_spaces WHERE id = ?').get(id);
-      const sql = `UPDATE protected_spaces SET ${fields.map(f => `${f} = ?`).join(', ')} WHERE id = ?`;
-      db.prepare(sql).run(...fields.map(f => patch[f]), id);
-      return db.prepare('SELECT * FROM protected_spaces WHERE id = ?').get(id);
+      if (!fields.length) return null;
+      const params = fields.map(f => patch[f]);
+      params.push(id);
+      const sql = `UPDATE protected_spaces SET ${fields.map((f, i) => `${f} = $${i + 1}`).join(', ')}
+                   WHERE id = $${params.length} RETURNING *`;
+      const { rows } = await pool.query(sql, params);
+      return rows[0];
     },
-    activeCount() {
-      if (isMemory()) return mem().protected_spaces.filter(p => !p.released_at).length;
-      return db.prepare('SELECT COUNT(*) c FROM protected_spaces WHERE released_at IS NULL').get().c;
+    async activeCount() {
+      const { rows } = await pool.query(
+        'SELECT COUNT(*)::int AS c FROM protected_spaces WHERE released_at IS NULL');
+      return rows[0].c;
     },
   },
 
   settings: {
-    all() {
-      if (isMemory()) return { ...mem().settings };
-      const rows = db.prepare('SELECT key, value FROM settings').all();
+    async all() {
+      const { rows } = await pool.query('SELECT key, value FROM settings');
       return Object.fromEntries(rows.map(r => [r.key, r.value]));
     },
-    get(key) {
-      if (isMemory()) return mem().settings[key];
-      const row = db.prepare('SELECT value FROM settings WHERE key = ?').get(key);
-      return row ? row.value : undefined;
+    async get(key) {
+      const { rows } = await pool.query('SELECT value FROM settings WHERE key = $1', [key]);
+      return rows[0] ? rows[0].value : undefined;
     },
-    set(key, value) {
-      if (isMemory()) { mem().settings[key] = String(value); return; }
-      db.prepare(`
-        INSERT INTO settings (key, value) VALUES (?, ?)
-        ON CONFLICT(key) DO UPDATE SET value = excluded.value
-      `).run(key, String(value));
+    async set(key, value) {
+      await pool.query(
+        `INSERT INTO settings (key, value) VALUES ($1, $2)
+         ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`,
+        [key, String(value)]);
     },
   },
 };
 
 // ===========================================================================
-// 6. security/credential-store.js — AES-256-GCM at rest
+// 7. security/credential-store.js — AES-256-GCM at rest
 // ===========================================================================
 const credentialStore = (() => {
-  const KEY_FILE = path.join(DATA_DIR, '.cred-key');
   function getKey() {
-    if (process.env.CREDENTIAL_KEY) {
-      return crypto.createHash('sha256').update(process.env.CREDENTIAL_KEY).digest();
-    }
+    // In production CREDENTIAL_KEY is required (validated at boot).
+    const envKey = process.env.CREDENTIAL_KEY;
+    if (envKey) return crypto.createHash('sha256').update(envKey).digest();
+    // Dev fallback: file-based key (never used in production because env is required)
+    const KEY_FILE = path.join(DATA_DIR, '.cred-key');
     if (!fs.existsSync(KEY_FILE)) {
       fs.writeFileSync(KEY_FILE, crypto.randomBytes(32), { mode: 0o600 });
     }
@@ -824,22 +556,21 @@ const credentialStore = (() => {
     }
   }
   return {
-    setPortalCredentials(username, password) {
-      repos.settings.set('portal.username', username || '');
-      repos.settings.set('portal.password.enc', password ? encrypt(password) : '');
+    async setPortalCredentials(username, password) {
+      await repos.settings.set('portal.username', username || '');
+      await repos.settings.set('portal.password.enc', password ? encrypt(password) : '');
     },
-    getPortalUsername() {
-      // Prefer stored value; fall back to env (useful for first boot)
-      return repos.settings.get('portal.username') || process.env.PORTAL_USER || '';
+    async getPortalUsername() {
+      const stored = await repos.settings.get('portal.username');
+      return stored || process.env.PORTAL_USER || '';
     },
-    hasPortalCredentials() {
-      const u = repos.settings.get('portal.username') || process.env.PORTAL_USER;
-      const p = repos.settings.get('portal.password.enc') || process.env.PORTAL_PASS;
+    async hasPortalCredentials() {
+      const u = (await repos.settings.get('portal.username')) || process.env.PORTAL_USER;
+      const p = (await repos.settings.get('portal.password.enc')) || process.env.PORTAL_PASS;
       return !!(u && p);
     },
-    // Only used by the scanner; never exposed via API.
-    _getPortalPassword() {
-      const stored = repos.settings.get('portal.password.enc');
+    async _getPortalPassword() {
+      const stored = await repos.settings.get('portal.password.enc');
       if (stored) return decrypt(stored);
       return process.env.PORTAL_PASS || '';
     },
@@ -847,16 +578,11 @@ const credentialStore = (() => {
 })();
 
 // ===========================================================================
-// 7. scanner/ — Real portal automation (mirrors hostelChecker.js)
+// 8. scanner/ — Portal automation
 // ===========================================================================
 
-// --- scanner/result-parser.js --------------------------------------------
+// --- result-parser -------------------------------------------------------
 const resultParser = {
-  /**
-   * Converts raw observations from hostel-scanner into normalised rows.
-   * Each observation: { campus_id, hostel_id, room_id, bed_space_id,
-   *                     available: bool, raw }
-   */
   parse(rawObservations) {
     if (!Array.isArray(rawObservations)) return [];
     return rawObservations.map(o => ({
@@ -870,17 +596,9 @@ const resultParser = {
       raw: o.raw || o,
     }));
   },
-  normaliseRoomId(id) {
-    return id ? String(id).trim().toUpperCase().replace(/\s+/g, '') : null;
-  },
 };
 
-// --- scanner/portal-client.js --------------------------------------------
-/**
- * Owns the Puppeteer browser and login step.
- * Mirrors the login() function from hostelChecker.js.
- * Credentials come ONLY from credentialStore.
- */
+// --- portal-client -------------------------------------------------------
 const portalClient = (() => {
   let browser = null;
   let loginPage = null;
@@ -888,10 +606,18 @@ const portalClient = (() => {
   async function launch() {
     if (!puppeteer) throw new Error('puppeteer not installed — portal automation unavailable');
     if (browser) return browser;
-    const headless = repos.settings.get('scanner.headless') === 'true';
+    const headless = (await repos.settings.get('scanner.headless')) === 'true';
     browser = await puppeteer.launch({
-      headless,
-      args: ['--disable-gpu', '--disable-extensions', '--no-sandbox', '--disable-setuid-sandbox'],
+      headless: headless ? 'new' : false,
+      args: [
+        '--disable-gpu',
+        '--disable-extensions',
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage',
+        '--single-process',
+        '--no-zygote',
+      ],
     });
     logger.info('Portal browser launched', { headless });
     return browser;
@@ -901,20 +627,16 @@ const portalClient = (() => {
     if (browser) { await browser.close(); browser = null; loginPage = null; }
   }
 
-  /**
-   * Logs into the BIU portal and returns the authenticated page.
-   * Selectors match hostelChecker.js (#Username, #Password, submit button).
-   */
   async function login() {
-    const username = credentialStore.getPortalUsername();
-    const password = credentialStore._getPortalPassword();
+    const username = await credentialStore.getPortalUsername();
+    const password = await credentialStore._getPortalPassword();
     if (!username || !password) {
       throw new Error('Portal credentials not configured. Set PORTAL_USER / PORTAL_PASS or use /api/settings/portal-credentials.');
     }
 
-    const baseURL = repos.settings.get('portal.baseURL') || process.env.BIU_PORTAL_URL || 'https://portal.biu.edu.ng';
-    const loginPath = repos.settings.get('portal.loginPath') || '/Students/Login';
-    const waitTimeout = parseInt(repos.settings.get('scanner.timeoutMs') || '60000', 10);
+    const baseURL = (await repos.settings.get('portal.baseURL')) || process.env.BIU_PORTAL_URL || 'https://portal.biu.edu.ng';
+    const loginPath = (await repos.settings.get('portal.loginPath')) || '/Students/Login';
+    const waitTimeout = parseInt((await repos.settings.get('scanner.timeoutMs')) || '60000', 10);
 
     const b = await launch();
     const page = await b.newPage();
@@ -941,26 +663,13 @@ const portalClient = (() => {
     }
   }
 
-  function getLoginPage() { return loginPage; }
-  return { launch, close, login, getLoginPage, isAvailable: () => !!puppeteer };
+  return { launch, close, login, isAvailable: () => !!puppeteer };
 })();
 
-// --- scanner/hostel-scanner.js -------------------------------------------
-/**
- * The actual portal traversal.
- * This is a faithful port of scanHostel() from hostelChecker.js — same
- * selectors (#HostelId, #FloorId, #RoomId, #BedSpaceId), same stale-data
- * guards, same retry behaviour, same "only enabled = available" rule.
- *
- * Difference: instead of printing/logging to a text file, it returns
- * structured observations that feed result-parser → DB.
- */
+// --- hostel-scanner ------------------------------------------------------
 const hostelScanner = (() => {
   const sleep = (ms) => new Promise(r => setTimeout(r, ms));
-
-  const randomMs = ([min, max]) =>
-    Math.floor(Math.random() * (max - min + 1)) + min;
-
+  const randomMs = ([min, max]) => Math.floor(Math.random() * (max - min + 1)) + min;
   const dedupe = (arr) => [...new Set(arr)];
 
   async function safeRun(fn, retries = 6) {
@@ -1037,9 +746,6 @@ const hostelScanner = (() => {
     });
   }
 
-  /**
-   * Guards against stale room lists — identical logic to hostelChecker.js.
-   */
   function looksStale(floorName, rooms) {
     if (/^FLAT\s+\d+$/i.test(floorName)) {
       const allFlatStyle = rooms.every(r => /^ROOM\s+\d+/i.test(r) || /SPORTS ROOM/i.test(r));
@@ -1055,11 +761,6 @@ const hostelScanner = (() => {
     return false;
   }
 
-  /**
-   * Reads the bed-space dropdown for the currently selected hostel/floor/room.
-   * Only ENABLED beds count as available (matches hostelChecker.js).
-   * Returns array of observation objects ready for the parser.
-   */
   async function readBedSpaces(page, ctx, roomKey) {
     return await safeRun(async () => {
       await page.waitForSelector('#BedSpaceId', { timeout: 10000 });
@@ -1094,42 +795,30 @@ const hostelScanner = (() => {
     });
   }
 
-  /**
-   * Scans ONE hostel on the portal.
-   * Returns observations for every (floor, room, bed) it managed to read.
-   */
   async function scanHostel(page, { campusId, hostelName, hostelId, onProgress }) {
-    const baseURL = repos.settings.get('portal.baseURL') || process.env.BIU_PORTAL_URL || 'https://portal.biu.edu.ng';
-    const hostelPath = repos.settings.get('portal.hostelPath') || '/Students/Hostels';
-    const delayCfg = [
-      parseInt(repos.settings.get('scanner.randomDelayMin') || '700', 10),
-      parseInt(repos.settings.get('scanner.randomDelayMax') || '1600', 10),
-    ];
+    const baseURL = (await repos.settings.get('portal.baseURL')) || process.env.BIU_PORTAL_URL || 'https://portal.biu.edu.ng';
+    const hostelPath = (await repos.settings.get('portal.hostelPath')) || '/Students/Hostels';
 
     logger.info(`Scanning hostel: ${hostelName}`);
     const observations = [];
 
-    // Reload the hostel page fresh for each hostel (matches original script)
     await safeRun(async () => {
       await page.goto(baseURL + hostelPath, { waitUntil: 'networkidle2' });
       await sleep(1000);
     });
 
-    // Clear downstream dropdowns so we never read stale options
     await clearDropdown(page, '#FloorId');
     await clearDropdown(page, '#RoomId');
     await clearDropdown(page, '#BedSpaceId');
 
-    // -------- Select hostel --------
     const hostelOk = await selectDropdownOption(page, '#HostelId', hostelName);
     if (!hostelOk) {
-      logger.warn(`Could not select hostel on portal`, { hostelName });
+      logger.warn('Could not select hostel on portal', { hostelName });
       return observations;
     }
     logger.info(`Selected hostel: ${hostelName}`);
     await sleep(1000);
 
-    // -------- Wait for floors --------
     let floors = null;
     for (let attempt = 1; attempt <= 3; attempt++) {
       try {
@@ -1146,12 +835,10 @@ const hostelScanner = (() => {
     }
     logger.info(`Hostel ${hostelName}: ${floors.length} unit(s) → ${floors.join(', ')}`);
 
-    // -------- Iterate floors/flats --------
     for (const unitName of floors) {
       logger.info(`  Unit ${unitName}`);
-      onProgress && onProgress({ hostelName, unitName });
+      if (onProgress) onProgress({ hostelName, unitName });
 
-      // Clear Room + BedSpace BEFORE changing floor (critical stale-data guard)
       const beforeRoomSig = await getOptionsSignature(page, '#RoomId');
       await clearDropdown(page, '#RoomId');
       await clearDropdown(page, '#BedSpaceId');
@@ -1160,7 +847,6 @@ const hostelScanner = (() => {
       const floorOk = await selectDropdownOption(page, '#FloorId', unitName);
       if (!floorOk) { logger.warn(`Could not select unit ${unitName}`); continue; }
 
-      // Wait for #RoomId to actually change
       const changed = await waitForNewOptions(page, '#RoomId', beforeRoomSig, 15000);
       if (!changed) await sleep(1500);
 
@@ -1179,13 +865,12 @@ const hostelScanner = (() => {
       }
 
       if (looksStale(unitName, rooms)) {
-        logger.warn(`Suspicious room list for ${hostelName}/${unitName} — possible stale data; skipping`);
+        logger.warn(`Suspicious room list for ${hostelName}/${unitName} — skipping`);
         continue;
       }
 
       logger.info(`    ${rooms.length} room(s) on ${unitName}`);
 
-      // -------- Iterate rooms --------
       for (const roomName of rooms) {
         const roomKey = `${hostelId}::${unitName}::${roomName}`;
 
@@ -1218,7 +903,7 @@ const hostelScanner = (() => {
   return { scanHostel };
 })();
 
-// --- scanner/scan-queue.js ------------------------------------------------
+// --- scan-queue ----------------------------------------------------------
 const scanQueue = (() => {
   const queue = [];
   const running = new Set();
@@ -1230,7 +915,7 @@ const scanQueue = (() => {
     process.nextTick(drain);
   }
 
-  function cancel(scanId) {
+  async function cancel(scanId) {
     if (running.has(scanId)) {
       cancelled.add(scanId);
       logger.warn('Scan cancellation requested', { scanId });
@@ -1239,7 +924,7 @@ const scanQueue = (() => {
     const idx = queue.findIndex(j => j.scanId === scanId);
     if (idx >= 0) {
       queue.splice(idx, 1);
-      repos.scans.update(scanId, { status: 'cancelled', finished_at: dates.now() });
+      await repos.scans.update(scanId, { status: 'cancelled', finished_at: new Date() });
       logger.info('Queued scan cancelled before start', { scanId });
       return true;
     }
@@ -1247,7 +932,7 @@ const scanQueue = (() => {
   }
 
   async function drain() {
-    const maxConcurrent = parseInt(repos.settings.get('scanner.maxConcurrent') || '1', 10);
+    const maxConcurrent = parseInt((await repos.settings.get('scanner.maxConcurrent')) || '1', 10);
     while (queue.length && running.size < maxConcurrent) {
       const job = queue.shift();
       running.add(job.scanId);
@@ -1269,13 +954,13 @@ const scanQueue = (() => {
 })();
 
 // ===========================================================================
-// 8. services/
+// 9. services/
 // ===========================================================================
 
-// --- services/scanner.service.js -----------------------------------------
+// --- scanner.service -----------------------------------------------------
 const scannerService = {
   async startScan({ scope, campusId, hostelId }) {
-    const scan = repos.scans.create({
+    const scan = await repos.scans.create({
       scope: scope || 'full',
       campus_id: campusId || null,
       hostel_id: hostelId || null,
@@ -1288,7 +973,7 @@ const scannerService = {
   },
 
   async _execute(scanId, { scope, campusId, hostelId }) {
-    repos.scans.update(scanId, { status: 'running' });
+    await repos.scans.update(scanId, { status: 'running' });
     logger.info('Scan started', { scanId, scope, campusId, hostelId });
 
     let page = null;
@@ -1296,7 +981,6 @@ const scannerService = {
     let roomsScanned = 0;
 
     try {
-      // -------- Determine targets from the real hostelConfig --------
       const flat = flattenHostelConfig();
       let targets = flat;
       if (scope === 'campus' && campusId) {
@@ -1307,12 +991,11 @@ const scannerService = {
       }
       if (!targets.length) throw new Error('No matching hostels for scan scope');
 
-      // -------- Login once, reuse page --------
       page = await portalClient.login();
 
       for (const t of targets) {
         if (scanQueue.isCancelled(scanId)) {
-          repos.scans.update(scanId, { status: 'cancelled', finished_at: dates.now() });
+          await repos.scans.update(scanId, { status: 'cancelled', finished_at: new Date() });
           logger.warn('Scan cancelled mid-run', { scanId });
           return;
         }
@@ -1325,49 +1008,43 @@ const scannerService = {
             logger.debug('Progress', { scanId, hostel: t.hostelName, unit: unitName }),
         });
 
-        // Count unique rooms actually observed
         const uniqueRooms = new Set(obs.map(o => o.room_id));
         roomsScanned += uniqueRooms.size;
-
         allObservations = allObservations.concat(obs);
 
-        // Small randomised delay between hostels (matches original script)
         const wait = 700 + Math.floor(Math.random() * 900);
         await new Promise(r => setTimeout(r, wait));
       }
 
       const parsed = resultParser.parse(allObservations);
-      repos.scanResults.insertMany(scanId, parsed);
+      await repos.scanResults.insertMany(scanId, parsed);
 
       const available = parsed.filter(p => p.status === 'available').length;
       const occupied  = parsed.filter(p => p.status === 'occupied').length;
 
-      repos.scans.update(scanId, {
+      await repos.scans.update(scanId, {
         status: 'success',
-        finished_at: dates.now(),
+        finished_at: new Date(),
         available_count: available,
         occupied_count: occupied,
         rooms_scanned: roomsScanned,
       });
       logger.info('Scan completed', { scanId, available, occupied, roomsScanned });
     } catch (err) {
-      // CRITICAL: never overwrite the last successful snapshot on failure.
-      // We only update the scans row for THIS run.
-      repos.scans.update(scanId, {
+      // Preserve last successful snapshot — only mark THIS scan failed
+      await repos.scans.update(scanId, {
         status: 'failed',
-        finished_at: dates.now(),
+        finished_at: new Date(),
         error: err.message,
       });
       logger.error('Scan failed', { scanId, err: err.message });
     } finally {
       if (page) await page.close().catch(() => {});
-      // Keep browser reusable; uncomment to close after each scan:
-      // await portalClient.close();
     }
   },
 
-  progress(scanId) {
-    const scan = repos.scans.find(scanId);
+  async progress(scanId) {
+    const scan = await repos.scans.find(scanId);
     if (!scan) return null;
     return { scan, queue: scanQueue.status() };
   },
@@ -1375,26 +1052,17 @@ const scannerService = {
   cancel(scanId) { return scanQueue.cancel(scanId); },
 };
 
-// --- services/inventory.service.js ---------------------------------------
+// --- inventory.service ---------------------------------------------------
 const inventoryService = {
-  /**
-   * Combines four sources into the current inventory view:
-   *   - configured structure   (what should exist)
-   *   - latest successful scan (what the portal reported)
-   *   - active allocations     (what we recorded)
-   *   - active protected spaces(what we are holding)
-   *
-   * Resolution order per bed: protected > allocated > scan snapshot > unknown
-   */
-  buildView({ campusId, hostelId } = {}) {
-    const latest = repos.scans.latestSuccessful();
-    const snapshot = latest ? repos.scanResults.byScan(latest.id) : [];
+  async buildView({ campusId, hostelId } = {}) {
+    const latest = await repos.scans.latestSuccessful();
+    const snapshot = latest ? await repos.scanResults.byScan(latest.id) : [];
     const snapshotByBed = new Map(snapshot.map(s => [s.bed_space_id, s]));
 
-    const allocations = repos.allocations.active();
+    const allocations = await repos.allocations.active();
     const allocByBed = new Map(allocations.map(a => [a.bed_space_id, a]));
 
-    const protectedList = repos.protectedSpaces.all({ activeOnly: true });
+    const protectedList = await repos.protectedSpaces.all({ activeOnly: true });
     const protectedByBed = new Map(protectedList.map(p => [p.bed_space_id, p]));
 
     const flat = flattenHostelConfig();
@@ -1420,7 +1088,6 @@ const inventoryService = {
 
           for (let i = 1; i <= h.bedsPerRoom; i++) {
             const bedId = `${roomId}-B${i}`;
-            // scan bed id uses `${roomKey}::${bedLabel}` format from hostel-scanner
             const scanKey = `${h.hostelId}::${unit.unitId}::${roomName}::Bed_${i}`.replace(/\s+/g, '_');
             const snap = snapshotByBed.get(bedId) || snapshotByBed.get(scanKey);
             const alloc = allocByBed.get(bedId);
@@ -1467,13 +1134,13 @@ const inventoryService = {
   },
 };
 
-// --- services/allocation.service.js --------------------------------------
+// --- allocation.service --------------------------------------------------
 const allocationService = {
-  allocate({ studentId, campusId, hostelId, roomId, bedSpaceId, reference }) {
+  async allocate({ studentId, campusId, hostelId, roomId, bedSpaceId, reference }) {
     if (!studentId || !bedSpaceId) throw new Error('studentId and bedSpaceId are required');
-    const existing = repos.allocations.byBed(bedSpaceId);
+    const existing = await repos.allocations.byBed(bedSpaceId);
     if (existing) throw new Error(`Bed ${bedSpaceId} already allocated`);
-    const prot = repos.protectedSpaces.byBed(bedSpaceId);
+    const prot = await repos.protectedSpaces.byBed(bedSpaceId);
     if (prot) throw new Error(`Bed ${bedSpaceId} is protected (${prot.status})`);
 
     return repos.allocations.create({
@@ -1484,13 +1151,15 @@ const allocationService = {
   lookupByStudent(studentId) { return repos.allocations.byStudent(studentId); },
 };
 
-// --- services/protected-spaces.service.js --------------------------------
+// --- protected-spaces.service --------------------------------------------
 const protectedSpacesService = {
-  create({ bedSpaceId, roomId, hostelId, campusId, status, holderName, holderRef, notes }) {
+  async create({ bedSpaceId, roomId, hostelId, campusId, status, holderName, holderRef, notes }) {
     if (!bedSpaceId) throw new Error('bedSpaceId is required');
     const allowed = ['reserved', 'held', 'payment_pending'];
     if (!allowed.includes(status)) throw new Error(`status must be one of ${allowed.join(', ')}`);
-    if (repos.protectedSpaces.byBed(bedSpaceId)) throw new Error(`Bed ${bedSpaceId} is already protected`);
+    if (await repos.protectedSpaces.byBed(bedSpaceId)) {
+      throw new Error(`Bed ${bedSpaceId} is already protected`);
+    }
     return repos.protectedSpaces.create({
       bed_space_id: bedSpaceId, room_id: roomId, hostel_id: hostelId,
       campus_id: campusId, status, holder_name: holderName,
@@ -1502,38 +1171,40 @@ const protectedSpacesService = {
   release(id) { return repos.protectedSpaces.release(id); },
 };
 
-// --- services/scan-history.service.js ------------------------------------
+// --- scan-history.service ------------------------------------------------
 const scanHistoryService = {
   list(limit = 50) { return repos.scans.list(limit); },
-  detail(scanId) {
-    const scan = repos.scans.find(scanId);
+  async detail(scanId) {
+    const scan = await repos.scans.find(scanId);
     if (!scan) return null;
-    return { scan, results: repos.scanResults.byScan(scanId) };
+    const results = await repos.scanResults.byScan(scanId);
+    return { scan, results };
   },
   lastSuccessful() { return repos.scans.latestSuccessful(); },
 };
 
-// --- services/report.service.js ------------------------------------------
+// --- report.service ------------------------------------------------------
 const reportService = {
-  summary() {
-    const scans = repos.scans.list(1000);
+  async summary() {
+    const scans = await repos.scans.list(1000);
     const success = scans.filter(s => s.status === 'success').length;
     const failed  = scans.filter(s => s.status === 'failed').length;
     return {
       totalScans: scans.length,
       successfulScans: success,
       failedScans: failed,
-      lastSuccessfulScan: repos.scans.latestSuccessful(),
-      protectedActive: repos.protectedSpaces.activeCount(),
+      lastSuccessfulScan: await repos.scans.latestSuccessful(),
+      protectedActive: await repos.protectedSpaces.activeCount(),
       generatedAt: dates.now(),
     };
   },
-  trend(days = 14) {
+  async trend(days = 14) {
     const cutoff = new Date(Date.now() - days * 86400000).toISOString();
-    const scans = repos.scans.list(1000).filter(s => s.started_at >= cutoff);
+    const scans = (await repos.scans.list(1000))
+      .filter(s => new Date(s.started_at).toISOString() >= cutoff);
     const byDay = {};
     for (const s of scans) {
-      const day = s.started_at.slice(0, 10);
+      const day = new Date(s.started_at).toISOString().slice(0, 10);
       if (!byDay[day]) byDay[day] = { day, available: 0, occupied: 0, scans: 0 };
       byDay[day].available += s.available_count || 0;
       byDay[day].occupied  += s.occupied_count  || 0;
@@ -1541,8 +1212,8 @@ const reportService = {
     }
     return Object.values(byDay).sort((a, b) => a.day.localeCompare(b.day));
   },
-  hostelComparison() {
-    const view = inventoryService.buildView();
+  async hostelComparison() {
+    const view = await inventoryService.buildView();
     return view.hostels.map(h => ({
       hostelId: h.hostelId, hostelName: h.hostelName,
       campusName: h.campusName, gender: h.gender,
@@ -1551,7 +1222,7 @@ const reportService = {
   },
 };
 
-// --- services/export.service.js ------------------------------------------
+// --- export.service ------------------------------------------------------
 const exportService = {
   toCSV(rows) {
     if (!rows.length) return '';
@@ -1568,10 +1239,10 @@ const exportService = {
   },
 };
 
-// --- services/settings.service.js ----------------------------------------
+// --- settings.service ----------------------------------------------------
 const settingsService = {
-  getAll(redactSecrets = true) {
-    const all = repos.settings.all();
+  async getAll(redactSecrets = true) {
+    const all = await repos.settings.all();
     if (!redactSecrets) return all;
     const safe = { ...all };
     delete safe['portal.password.enc'];
@@ -1579,7 +1250,7 @@ const settingsService = {
     safe['portal.username'] = all['portal.username'] || process.env.PORTAL_USER || '';
     return safe;
   },
-  update(patch) {
+  async update(patch) {
     const allowed = [
       'app.name',
       'scanner.headless', 'scanner.timeoutMs', 'scanner.maxConcurrent',
@@ -1588,44 +1259,57 @@ const settingsService = {
       'backup.retentionDays', 'backup.autoEnabled',
     ];
     for (const [k, v] of Object.entries(patch || {})) {
-      if (allowed.includes(k)) repos.settings.set(k, v);
+      if (allowed.includes(k)) await repos.settings.set(k, v);
     }
     return this.getAll();
   },
-  updatePortalCredentials(username, password) {
-    credentialStore.setPortalCredentials(username, password);
+  async updatePortalCredentials(username, password) {
+    await credentialStore.setPortalCredentials(username, password);
     return { username, passwordSet: !!password };
   },
-  testPortalConnection() {
+  async testPortalConnection() {
     return {
-      configured: credentialStore.hasPortalCredentials(),
-      username: credentialStore.getPortalUsername() || null,
-      baseURL: repos.settings.get('portal.baseURL') || process.env.BIU_PORTAL_URL,
+      configured: await credentialStore.hasPortalCredentials(),
+      username: (await credentialStore.getPortalUsername()) || null,
+      baseURL: (await repos.settings.get('portal.baseURL')) || process.env.BIU_PORTAL_URL,
       puppeteerAvailable: portalClient.isAvailable(),
     };
   },
 };
 
-// --- services/backup.service.js ------------------------------------------
+// --- backup.service (Postgres-aware) -------------------------------------
 const backupService = {
-  createBackup() {
-    if (isMemory()) throw new Error('Backup requires persistent SQLite database');
-    const filename = `backup-${Date.now()}.db`;
+  /**
+   * For Postgres, "backup" means a logical dump via pg_dump-style query.
+   * In production, use Supabase's built-in daily backups instead of this.
+   * Here we return a lightweight JSON snapshot of the core tables.
+   */
+  async createBackup() {
+    const tables = ['users', 'campuses', 'hostels', 'rooms', 'bed_spaces',
+                    'students', 'allocations', 'scans', 'scan_results',
+                    'protected_spaces', 'settings'];
+    const snapshot = {};
+    for (const t of tables) {
+      const { rows } = await pool.query(`SELECT * FROM ${t}`);
+      snapshot[t] = rows;
+    }
+    const filename = `backup-${Date.now()}.json`;
     const full = path.join(BACKUP_DIR, filename);
-    db.prepare('VACUUM INTO ?').run(full);
+    fs.writeFileSync(full, JSON.stringify(snapshot, null, 2), 'utf8');
     logger.info('Backup created', { file: filename });
     return { filename, path: full, sizeBytes: fs.statSync(full).size };
   },
   listBackups() {
     if (!fs.existsSync(BACKUP_DIR)) return [];
-    return fs.readdirSync(BACKUP_DIR).filter(f => f.endsWith('.db')).map(f => {
+    return fs.readdirSync(BACKUP_DIR).filter(f => f.endsWith('.json')).map(f => {
       const st = fs.statSync(path.join(BACKUP_DIR, f));
       return { filename: f, sizeBytes: st.size, createdAt: st.mtime.toISOString() };
     });
   },
 };
 
-// ===========================================================================// 9. middleware/
+// ===========================================================================
+// 10. middleware
 // ===========================================================================
 function requireAuth(req, res, next) {
   if (req.session && req.session.userId) return next();
@@ -1656,7 +1340,7 @@ const validate = {
 function errorHandler(err, req, res, _next) {
   logger.error('Unhandled error', { path: req.path, method: req.method, err: err.message });
   const status = err.status || 500;
-  const message = status >= 500 && NODE_ENV === 'production'
+  const message = status >= 500 && IS_PROD
     ? 'Internal server error'
     : err.message || 'Internal server error';
   res.status(status).json({ error: message });
@@ -1665,21 +1349,43 @@ function errorHandler(err, req, res, _next) {
 const asyncWrap = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
 
 // ===========================================================================
-// 10. Express app + routes
+// 11. Express app
 // ===========================================================================
 function createApp() {
   const app = express();
 
+  app.set('trust proxy', 1); // Render sits behind a proxy — needed for secure cookies
+
   app.use(express.json({ limit: '2mb' }));
   app.use(express.urlencoded({ extended: true }));
+
+  // ---- CORS (Vercel → Render) ----
+  const allowedOrigins = (process.env.CORS_ORIGINS || '')
+    .split(',').map(s => s.trim()).filter(Boolean);
+
+  app.use((req, res, next) => {
+    const origin = req.headers.origin;
+    if (origin && allowedOrigins.includes(origin)) {
+      res.setHeader('Access-Control-Allow-Origin', origin);
+      res.setHeader('Access-Control-Allow-Credentials', 'true');
+    }
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PATCH, DELETE, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    if (req.method === 'OPTIONS') return res.sendStatus(200);
+    next();
+  });
+
+  // ---- Sessions (Postgres-backed) ----
   app.use(session({
+    store: new pgSession({ pool, tableName: 'session' }),
     name: 'hsf.sid',
-    secret: process.env.SESSION_SECRET || crypto.randomBytes(32).toString('hex'),
+    secret: process.env.SESSION_SECRET,
     resave: false,
     saveUninitialized: false,
     cookie: {
-      httpOnly: true, sameSite: 'lax',
-      secure: NODE_ENV === 'production',
+      httpOnly: true,
+      sameSite: IS_PROD ? 'none' : 'lax',  // cross-origin Vercel → Render
+      secure: IS_PROD,                     // required for sameSite:'none'
       maxAge: 1000 * 60 * 60 * 8,
     },
   }));
@@ -1687,20 +1393,22 @@ function createApp() {
   app.use(express.static(path.join(__dirname, 'public')));
 
   // ---- Health ----
-  app.get('/api/health', (req, res) => {
+  app.get('/api/health', asyncWrap(async (req, res) => {
+    let dbOk = false;
+    try { await pool.query('SELECT 1'); dbOk = true; } catch { /* noop */ }
     res.json({
       ok: true, env: NODE_ENV, time: dates.now(),
-      db: isMemory() ? 'memory' : 'sqlite',
+      db: dbOk ? 'postgres' : 'unavailable',
       puppeteer: portalClient.isAvailable(),
     });
-  });
+  }));
 
   // ---- Auth ----
   app.post('/api/auth/login',
     validate.body({ username: { required: true, type: 'string' }, password: { required: true, type: 'string' } }),
     asyncWrap(async (req, res) => {
       const { username, password } = req.body;
-      const user = repos.users.findByUsername(username);
+      const user = await repos.users.findByUsername(username);
       if (!user || !bcrypt.compareSync(password, user.password_hash)) {
         return res.status(401).json({ error: 'Invalid credentials' });
       }
@@ -1718,9 +1426,10 @@ function createApp() {
     res.json({ authenticated: false });
   });
 
-  app.get('/api/auth/me', requireAuth, (req, res) => {
-    res.json({ user: repos.users.findById(req.session.userId) });
-  });
+  app.get('/api/auth/me', requireAuth, asyncWrap(async (req, res) => {
+    const user = await repos.users.findById(req.session.userId);
+    res.json({ user });
+  }));
 
   app.post('/api/auth/logout', (req, res) => {
     const username = req.session && req.session.username;
@@ -1736,16 +1445,16 @@ function createApp() {
   api.use(requireAuth);
 
   // ---- Dashboard ----
-  api.get('/dashboard', (req, res) => {
-    const latest = repos.scans.latestSuccessful();
-    const view = inventoryService.buildView();
+  api.get('/dashboard', asyncWrap(async (req, res) => {
+    const latest = await repos.scans.latestSuccessful();
+    const view = await inventoryService.buildView();
     const totals = view.hostels.reduce((acc, h) => {
       for (const k of Object.keys(h.totals)) acc[k] = (acc[k] || 0) + h.totals[k];
       return acc;
     }, { available: 0, occupied: 0, held: 0, unknown: 0, allocated: 0 });
 
     res.json({
-      appName: repos.settings.get('app.name') || 'Hostel Space Finder',
+      appName: (await repos.settings.get('app.name')) || 'Hostel Space Finder',
       lastSuccessfulScan: latest,
       totals,
       hostelSummaries: view.hostels.map(h => ({
@@ -1753,11 +1462,11 @@ function createApp() {
         campusName: h.campusName, gender: h.gender,
         totals: h.totals,
       })),
-      recentScans: repos.scans.list(10),
-      protectedActive: repos.protectedSpaces.activeCount(),
+      recentScans: await repos.scans.list(10),
+      protectedActive: await repos.protectedSpaces.activeCount(),
       generatedAt: dates.now(),
     });
-  });
+  }));
 
   // ---- Scanner ----
   api.post('/scanner/start',
@@ -1770,113 +1479,117 @@ function createApp() {
       res.status(202).json({ scan });
     })
   );
-  api.get('/scanner/progress/:scanId', (req, res) => {
-    const p = scannerService.progress(parseInt(req.params.scanId, 10));
+  api.get('/scanner/progress/:scanId', asyncWrap(async (req, res) => {
+    const p = await scannerService.progress(parseInt(req.params.scanId, 10));
     if (!p) return res.status(404).json({ error: 'Scan not found' });
     res.json(p);
-  });
-  api.get('/scanner/result/:scanId', (req, res) => {
-    const d = scanHistoryService.detail(parseInt(req.params.scanId, 10));
+  }));
+  api.get('/scanner/result/:scanId', asyncWrap(async (req, res) => {
+    const d = await scanHistoryService.detail(parseInt(req.params.scanId, 10));
     if (!d) return res.status(404).json({ error: 'Scan not found' });
     res.json(d);
-  });
-  api.post('/scanner/cancel/:scanId', (req, res) => {
-    res.json({ cancelled: scannerService.cancel(parseInt(req.params.scanId, 10)) });
-  });
+  }));
+  api.post('/scanner/cancel/:scanId', asyncWrap(async (req, res) => {
+    res.json({ cancelled: await scannerService.cancel(parseInt(req.params.scanId, 10)) });
+  }));
   api.get('/scanner/queue', (req, res) => res.json(scanQueue.status()));
-  api.get('/scanner/errors', (req, res) => {
-    const failed = repos.scans.list(50).filter(s => s.status === 'failed');
+  api.get('/scanner/errors', asyncWrap(async (req, res) => {
+    const failed = (await repos.scans.list(50)).filter(s => s.status === 'failed');
     res.json({ failed });
-  });
+  }));
 
   // ---- Inventory ----
-  api.get('/inventory', (req, res) => {
-    res.json(inventoryService.buildView({
+  api.get('/inventory', asyncWrap(async (req, res) => {
+    res.json(await inventoryService.buildView({
       campusId: req.query.campusId, hostelId: req.query.hostelId,
     }));
-  });
-  api.get('/inventory/campuses', (req, res) => res.json({ campuses: repos.campuses.all() }));
-  api.get('/inventory/hostels', (req, res) => {
-    if (req.query.campusId) return res.json({ hostels: repos.hostels.byCampus(req.query.campusId) });
-    res.json({ hostels: repos.hostels.all() });
-  });
-  api.get('/inventory/rooms/:hostelId', (req, res) =>
-    res.json({ rooms: repos.rooms.byHostel(req.params.hostelId) }));
-  api.get('/inventory/beds/:roomId', (req, res) =>
-    res.json({ beds: repos.beds.byRoom(req.params.roomId) }));
+  }));
+  api.get('/inventory/campuses', asyncWrap(async (req, res) =>
+    res.json({ campuses: await repos.campuses.all() })));
+  api.get('/inventory/hostels', asyncWrap(async (req, res) => {
+    if (req.query.campusId) return res.json({ hostels: await repos.hostels.byCampus(req.query.campusId) });
+    res.json({ hostels: await repos.hostels.all() });
+  }));
+  api.get('/inventory/rooms/:hostelId', asyncWrap(async (req, res) =>
+    res.json({ rooms: await repos.rooms.byHostel(req.params.hostelId) })));
+  api.get('/inventory/beds/:roomId', asyncWrap(async (req, res) =>
+    res.json({ beds: await repos.beds.byRoom(req.params.roomId) })));
 
   // ---- Students ----
-  api.get('/students', (req, res) => {
-    const students = repos.students.search({
+  api.get('/students', asyncWrap(async (req, res) => {
+    const students = await repos.students.search({
       q: req.query.q, hostelId: req.query.hostelId,
       roomId: req.query.roomId, matric: req.query.matric,
     });
-    res.json({
-      students: students.map(s => ({ ...s, allocations: repos.allocations.byStudent(s.id) })),
-    });
-  });
+    const withAlloc = [];
+    for (const s of students) {
+      withAlloc.push({ ...s, allocations: await repos.allocations.byStudent(s.id) });
+    }
+    res.json({ students: withAlloc });
+  }));
   api.post('/students',
     validate.body({ matric_number: { required: true, type: 'string' }, full_name: { required: true, type: 'string' } }),
-    asyncWrap(async (req, res) => res.status(201).json({ student: repos.students.create(req.body) }))
+    asyncWrap(async (req, res) => res.status(201).json({ student: await repos.students.create(req.body) }))
   );
   api.post('/students/allocate',
     validate.body({ studentId: { required: true, type: 'number' }, bedSpaceId: { required: true, type: 'string' } }),
-    asyncWrap(async (req, res) => res.status(201).json({ allocation: allocationService.allocate(req.body) }))
+    asyncWrap(async (req, res) => res.status(201).json({ allocation: await allocationService.allocate(req.body) }))
   );
-  api.get('/students/:studentId/allocations', (req, res) =>
-    res.json({ allocations: allocationService.lookupByStudent(parseInt(req.params.studentId, 10)) }));
+  api.get('/students/:studentId/allocations', asyncWrap(async (req, res) =>
+    res.json({ allocations: await allocationService.lookupByStudent(parseInt(req.params.studentId, 10)) })));
 
   // ---- Protected spaces ----
-  api.get('/protected-spaces', (req, res) => {
+  api.get('/protected-spaces', asyncWrap(async (req, res) => {
     res.json({
-      protectedSpaces: protectedSpacesService.list({
+      protectedSpaces: await protectedSpacesService.list({
         status: req.query.status, hostelId: req.query.hostelId,
         activeOnly: req.query.activeOnly !== 'false',
       }),
     });
-  });
+  }));
   api.post('/protected-spaces',
     validate.body({
       bedSpaceId: { required: true, type: 'string' },
       status: { required: true, type: 'string', enum: ['reserved', 'held', 'payment_pending'] },
     }),
-    asyncWrap(async (req, res) => res.status(201).json({ protectedSpace: protectedSpacesService.create(req.body) }))
+    asyncWrap(async (req, res) => res.status(201).json({ protectedSpace: await protectedSpacesService.create(req.body) }))
   );
   api.patch('/protected-spaces/:id', asyncWrap(async (req, res) => {
-    const rec = protectedSpacesService.update(parseInt(req.params.id, 10), req.body || {});
+    const rec = await protectedSpacesService.update(parseInt(req.params.id, 10), req.body || {});
     if (!rec) return res.status(404).json({ error: 'Not found' });
     res.json({ protectedSpace: rec });
   }));
   api.post('/protected-spaces/:id/release', asyncWrap(async (req, res) => {
-    const rec = protectedSpacesService.release(parseInt(req.params.id, 10));
+    const rec = await protectedSpacesService.release(parseInt(req.params.id, 10));
     if (!rec) return res.status(404).json({ error: 'Not found' });
     res.json({ protectedSpace: rec });
   }));
 
   // ---- History ----
-  api.get('/history', (req, res) => {
+  api.get('/history', asyncWrap(async (req, res) => {
     const limit = Math.min(parseInt(req.query.limit, 10) || 50, 500);
-    res.json({ scans: scanHistoryService.list(limit) });
-  });
-  api.get('/history/:scanId', (req, res) => {
-    const d = scanHistoryService.detail(parseInt(req.params.scanId, 10));
+    res.json({ scans: await scanHistoryService.list(limit) });
+  }));
+  api.get('/history/:scanId', asyncWrap(async (req, res) => {
+    const d = await scanHistoryService.detail(parseInt(req.params.scanId, 10));
     if (!d) return res.status(404).json({ error: 'Scan not found' });
     res.json(d);
-  });
+  }));
 
   // ---- Reports ----
-  api.get('/reports/summary', (req, res) => res.json(reportService.summary()));
-  api.get('/reports/trend', (req, res) => {
+  api.get('/reports/summary', asyncWrap(async (req, res) => res.json(await reportService.summary())));
+  api.get('/reports/trend', asyncWrap(async (req, res) => {
     const days = Math.min(parseInt(req.query.days, 10) || 14, 180);
-    res.json({ days, trend: reportService.trend(days) });
-  });
-  api.get('/reports/hostels', (req, res) => res.json({ hostels: reportService.hostelComparison() }));
+    res.json({ days, trend: await reportService.trend(days) });
+  }));
+  api.get('/reports/hostels', asyncWrap(async (req, res) =>
+    res.json({ hostels: await reportService.hostelComparison() })));
   api.get('/reports/export', asyncWrap(async (req, res) => {
     const type = req.query.type || 'inventory';
     let rows;
-    if (type === 'inventory') rows = reportService.hostelComparison();
-    else if (type === 'history') rows = scanHistoryService.list(1000);
-    else if (type === 'protected') rows = protectedSpacesService.list({ activeOnly: false });
+    if (type === 'inventory') rows = await reportService.hostelComparison();
+    else if (type === 'history') rows = await scanHistoryService.list(1000);
+    else if (type === 'protected') rows = await protectedSpacesService.list({ activeOnly: false });
     else return res.status(400).json({ error: 'Unknown report type' });
     const { filename } = exportService.writeReport(type, rows);
     res.json({ filename, downloadUrl: `/api/reports/download/${filename}` });
@@ -1889,16 +1602,20 @@ function createApp() {
   });
 
   // ---- Settings ----
-  api.get('/settings', (req, res) => res.json({ settings: settingsService.getAll() }));
+  api.get('/settings', asyncWrap(async (req, res) =>
+    res.json({ settings: await settingsService.getAll() })));
   api.patch('/settings', asyncWrap(async (req, res) =>
-    res.json({ settings: settingsService.update(req.body || {}) })));
+    res.json({ settings: await settingsService.update(req.body || {}) })));
   api.post('/settings/portal-credentials',
     validate.body({ username: { required: true, type: 'string' }, password: { required: true, type: 'string' } }),
     asyncWrap(async (req, res) =>
-      res.json(settingsService.updatePortalCredentials(req.body.username, req.body.password))));
-  api.post('/settings/portal-test', (req, res) => res.json(settingsService.testPortalConnection()));
-  api.post('/settings/backup', asyncWrap(async (req, res) => res.json(backupService.createBackup())));
-  api.get('/settings/backups', (req, res) => res.json({ backups: backupService.listBackups() }));
+      res.json(await settingsService.updatePortalCredentials(req.body.username, req.body.password))));
+  api.post('/settings/portal-test', asyncWrap(async (req, res) =>
+    res.json(await settingsService.testPortalConnection())));
+  api.post('/settings/backup', asyncWrap(async (req, res) =>
+    res.json(await backupService.createBackup())));
+  api.get('/settings/backups', (req, res) =>
+    res.json({ backups: backupService.listBackups() }));
 
   app.use('/api', api);
 
@@ -1917,16 +1634,16 @@ function createApp() {
 }
 
 // ===========================================================================
-// 11. Bootstrap + graceful shutdown
+// 12. Bootstrap + graceful shutdown
 // ===========================================================================
 async function start() {
   ensureDirs();
-  initDatabase();
+  await initDatabase();
 
   const app = createApp();
   const server = app.listen(PORT, () => {
     logger.info('Hostel Space Finder server listening', {
-      port: PORT, env: NODE_ENV, url: `http://localhost:${PORT}`,
+      port: PORT, env: NODE_ENV,
     });
   });
 
@@ -1935,7 +1652,7 @@ async function start() {
     server.close(async () => {
       try {
         await portalClient.close();
-        if (db && !isMemory()) db.close();
+        await pool.end();
       } catch (e) { logger.error('Shutdown error', { err: e.message }); }
       logger.info('Server closed');
       process.exit(0);
@@ -1947,6 +1664,12 @@ async function start() {
   process.on('SIGTERM', () => shutdown('SIGTERM'));
   process.on('unhandledRejection', (reason) =>
     logger.error('Unhandled promise rejection', { reason: String(reason) }));
+}
+
+function ensureDirs() {
+  for (const d of [DATA_DIR, BACKUP_DIR, EXPORT_DIR]) {
+    if (!fs.existsSync(d)) fs.mkdirSync(d, { recursive: true });
+  }
 }
 
 if (require.main === module) start();
